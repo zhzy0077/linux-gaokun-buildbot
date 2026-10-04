@@ -12,7 +12,7 @@ on:
         required: true
         default: "v7.2-rc2"
       desktop_environment:
-        description: Desktop environment package group (single package or group)
+        description: Space-separated desktop package groups or packages
         required: true
         default: "@gnome-desktop @workstation-product"
       excluded_packages:
@@ -195,6 +195,7 @@ jobs:
           sudo docker run --rm \
             -v "$GITHUB_WORKSPACE":"$GITHUB_WORKSPACE" \
             -w "$GITHUB_WORKSPACE" \
+            -e DESKTOP_ENVIRONMENT \
             --user root \
             "fedora:${FEDORA_RELEASE}" \
             bash -euxo pipefail -c '
@@ -202,11 +203,12 @@ jobs:
               sed -i "/tsflags=nodocs/d" /etc/dnf/dnf.conf
 
               mkdir -p "'"$ROOTFS_DIR"'/etc"
+              read -r -a desktop_packages <<< "$DESKTOP_ENVIRONMENT"
 
               dnf -y --installroot="'"$ROOTFS_DIR"'" --releasever="'"$FEDORA_RELEASE"'" --forcearch=aarch64 --use-host-config \
                 --exclude="'"$EXCLUDED_PACKAGES"'" \
                 install \
-                @core @standard "'"$DESKTOP_ENVIRONMENT"'" \
+                @core @standard "${desktop_packages[@]}" \
                 systemd-boot-unsigned alsa-ucm \
                 langpacks-en langpacks-zh_CN \
                 google-noto-color-emoji-fonts google-noto-emoji-fonts \
