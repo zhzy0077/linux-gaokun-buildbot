@@ -195,7 +195,7 @@ jobs:
           sudo docker run --rm \
             -v "$GITHUB_WORKSPACE":"$GITHUB_WORKSPACE" \
             -w "$GITHUB_WORKSPACE" \
-            -e DESKTOP_ENVIRONMENT \
+            -e "DESKTOP_ENVIRONMENT=$DESKTOP_ENVIRONMENT" \
             --user root \
             "fedora:${FEDORA_RELEASE}" \
             bash -euxo pipefail -c '
