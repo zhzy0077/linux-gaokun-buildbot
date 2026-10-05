@@ -3,7 +3,7 @@
 
 Name:           @PKG_NAME@
 Version:        @KREL_VERSION@
-Release:        5%{?dist}
+Release:        6%{?dist}
 Summary:        Kernel image, DTB, config, and System.map for the gaokun3 kernel
 License:        GPL-2.0-only
 ExclusiveArch:  aarch64
@@ -75,7 +75,7 @@ fi
 /usr/lib/dracut/dracut.conf.d/90-gaokun3-@KREL@.conf
 
 %changelog
-* Mon Oct 05 2026 Gaokun buildbot - @KREL_VERSION@-5
+* Mon Oct 05 2026 Gaokun buildbot - @KREL_VERSION@-6
 - Integrate Gaokun CPU/touchscreen support and early firmware collection
 - Support Anaconda discovery and safe kernel-install updates
 

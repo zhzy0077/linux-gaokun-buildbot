@@ -59,6 +59,51 @@ class KernelPatchTests(unittest.TestCase):
             raise AssertionError(f'git {args[0]} failed:\n{result.stdout}{result.stderr}')
         return result.stdout
 
+    @unittest.skipUnless(shutil.which('cc'), 'native C compiler required')
+    def test_bonded_pll_can_be_programmed_before_phy_enable(self):
+        source = (self.tree / 'drivers/gpu/drm/msm/dsi/phy/dsi_phy_7nm.c').read_text()
+        enable = re.search(r'static void dsi_pll_enable_pll_bias\([^;]*?\)\n\{.*?\n\}',
+                           source, re.DOTALL).group(0)
+        for name in ('dsi_7nm_phy_enable', 'dsi_7nm_phy_disable'):
+            body = re.search(r'static (?:int|void) ' + name + r'\(.*?\n\}', source, re.DOTALL).group(0)
+            self.assertNotIn('pll_enable_cnt', body, name)
+        harness = r'''
+#include <assert.h>
+#include <limits.h>
+#include <stdint.h>
+typedef uint32_t u32;
+#define REG_DSI_7nm_PHY_CMN_CTRL_0 0
+#define REG_DSI_7nm_PHY_PLL_SYSTEM_MUXES 0
+#define DSI_7nm_PHY_CMN_CTRL_0_PLL_SHUTDOWNB 1U
+#define spin_lock_irqsave(lock, flags) do { (void)(lock); (flags) = 0; } while (0)
+#define spin_unlock_irqrestore(lock, flags) do { (void)(lock); (void)(flags); } while (0)
+#define WARN_ON(condition) assert(!(condition))
+struct phy { u32 *base, *pll_base; };
+struct dsi_pll_7nm { struct phy *phy; int pll_enable_lock, pll_enable_cnt; };
+static u32 readl(u32 *reg) { return *reg; }
+static void writel(u32 value, u32 *reg) { *reg = value; }
+static void ndelay(unsigned n) { (void)n; }
+''' + enable + r'''
+int main(void) {
+    u32 control = 0, mux = 0;
+    struct phy phy = {&control, &mux};
+    struct dsi_pll_7nm pll = {.phy = &phy};
+    dsi_pll_enable_pll_bias(&pll);
+    assert(pll.pll_enable_cnt == 1 && control == 1 && mux == 0xc0);
+    /* A second host must still program shared PLL state, not return early. */
+    control = mux = 0;
+    dsi_pll_enable_pll_bias(&pll);
+    assert(pll.pll_enable_cnt == 2 && control == 1 && mux == 0xc0);
+    return 0;
+}
+'''
+        path = self.tree / 'pll-test.c'
+        binary = self.tree / 'pll-test'
+        path.write_text(harness)
+        subprocess.run(['cc', '-std=c11', '-Wall', '-Wextra', '-Werror', str(path), '-o', str(binary)],
+                       check=True, capture_output=True)
+        subprocess.run([str(binary)], check=True)
+
     def test_complete_standard_and_el2_series(self):
         for name in ('sc8280xp-huawei-gaokun3.dts', 'sc8280xp-huawei-gaokun3-camera.dtsi'):
             self.assertEqual((self.tree / 'arch/arm64/boot/dts/qcom' / name).read_bytes(),
