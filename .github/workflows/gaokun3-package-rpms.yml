@@ -6,7 +6,7 @@ on:
       kernel_tag:
         description: Linux kernel tag
         required: true
-        default: "v7.2-rc2"
+        default: "v7.2.9"
       build_el2:
         description: Build extra -gaokun3-el2 kernel packages
         required: true
@@ -56,7 +56,7 @@ jobs:
       - name: Checkout Linux source
         uses: actions/checkout@v6
         with:
-          repository: torvalds/linux
+          repository: gregkh/linux
           ref: ${{ env.KERNEL_TAG }}
           fetch-depth: 1
           path: build-packages/mainline-linux
@@ -95,6 +95,7 @@ jobs:
 
       - name: Check platform and installer regressions
         run: |
+          GAOKUN_KERNEL_SRC="$KERN_SRC" \
           GAOKUN_UPSTREAM_DTS="$KERN_SRC/arch/arm64/boot/dts/qcom/sc8280xp-huawei-gaokun3.dts" \
           GAOKUN_UPSTREAM_CPUINFO="$KERN_SRC/arch/arm64/kernel/cpuinfo.c" \
             python3 -m unittest discover -s tests -v

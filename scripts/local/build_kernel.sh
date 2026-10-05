@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-KERNEL_TAG="${KERNEL_TAG:-v7.2-rc2}"
+KERNEL_TAG="${KERNEL_TAG:-v7.2.9}"
 GAOKUN_DIR="${GAOKUN_DIR:-$HOME/gaokun/linux-gaokun-buildbot}"
 KERN_SRC="${KERN_SRC:-$HOME/gaokun/mainline-linux}"
 KERN_OUT="${KERN_OUT:-$HOME/gaokun/kernel-out}"
@@ -80,12 +80,12 @@ ensure_source_tree() {
         git clone https://github.com/KawaiiHachimi/linux-gaokun-buildbot "$GAOKUN_DIR"
     fi
 
-    read -r -p "Use Chinese mirror (mirrors.bfsu.edu.cn) for Linux kernel? [Y/n] [default: Y]: " mirror_choice
+    read -r -p "Use GitHub mirror (gregkh/linux) for Linux stable kernel? [Y/n] [default: Y]: " mirror_choice
     mirror_choice="${mirror_choice:-Y}"
     if [[ "$mirror_choice" =~ ^([nN][oO]|[nN])$ ]]; then
-        KERNEL_URL="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"
+        KERNEL_URL="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
     else
-        KERNEL_URL="https://mirrors.bfsu.edu.cn/git/linux.git"
+        KERNEL_URL="https://github.com/gregkh/linux.git"
     fi
 
     rm -rf "$KERN_SRC"

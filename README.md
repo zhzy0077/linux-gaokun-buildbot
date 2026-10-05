@@ -40,6 +40,8 @@ The package pipeline builds and installs dedicated package sets:
 
 ### Patch Sources
 
+The patch series targets Linux **7.2.9** from the stable tree. CI and local builds default to `v7.2.9`; see the [kernel build and validation notes (Chinese)](docs/kernel_7.2.9_rebase_zh.md).
+
 - `upstream/*` and `others/0017`: adapted from [right-0903/linux-gaokun](https://github.com/right-0903/linux-gaokun) for the base SC8280XP / gaokun3 enablement, display bring-up, EC suspend/resume, ADSP FastRPC, and DSI stability work
 - `others/0001`: adapted from [whitelewi1-ctrl/matebook-e-go-linux](https://github.com/whitelewi1-ctrl/matebook-e-go-linux) to avoid setting `USE_BDADDR_PROPERTY` when the adapter address is invalid
 - `others/0002`: local change in this repository to enable DSC and allow 60 Hz / 120 Hz switching

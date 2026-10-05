@@ -6,7 +6,7 @@ on:
       kernel_tag:
         description: Linux kernel tag
         required: true
-        default: "v7.2-rc2"
+        default: "v7.2.9"
       build_el2:
         description: Build extra -gaokun3-el2 kernel packages
         required: true
@@ -56,7 +56,7 @@ jobs:
       - name: Checkout Linux source
         uses: actions/checkout@v6
         with:
-          repository: torvalds/linux
+          repository: gregkh/linux
           ref: ${{ env.KERNEL_TAG }}
           fetch-depth: 1
           path: build-packages/mainline-linux
@@ -92,6 +92,10 @@ jobs:
           restore-keys: |
             gaokun3-packages-deb-ccache-${{ env.KERNEL_TAG }}-
             gaokun3-packages-deb-ccache-
+
+      - name: Check kernel patch series
+        run: |
+          GAOKUN_KERNEL_SRC="$KERN_SRC" python3 tests/test_kernel_patches.py -v
 
       - name: Build gaokun kernel variants
         run: |

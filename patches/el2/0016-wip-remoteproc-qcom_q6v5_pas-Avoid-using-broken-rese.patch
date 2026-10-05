@@ -1,8 +1,8 @@
-From 479d36dc37ed37c3122106b7ac93f25149c3aef2 Mon Sep 17 00:00:00 2001
+From a7e672466e7110fb53a52a8db4483b3ce33054a3 Mon Sep 17 00:00:00 2001
 From: Stephan Gerhold <stephan@gerhold.net>
 Date: Wed, 30 Jul 2025 16:35:46 +0200
-Subject: [PATCH 16/22] wip: remoteproc: qcom_q6v5_pas: Avoid using broken
- reset when running bare-metal
+Subject: [PATCH] wip: remoteproc: qcom_q6v5_pas: Avoid using broken reset when
+ running bare-metal
 
 Some firmware versions have a split design where firmware authentication is
 implemented in the TZ firmware, but the remoteproc reset sequence appears
@@ -30,11 +30,11 @@ Signed-off-by: Stephan Gerhold <stephan@gerhold.net>
  1 file changed, 29 insertions(+), 3 deletions(-)
 
 diff --git a/drivers/remoteproc/qcom_q6v5_pas.c b/drivers/remoteproc/qcom_q6v5_pas.c
-index 5be115a10..a44026aca 100644
+index ef92c8328..e592e3caa 100644
 --- a/drivers/remoteproc/qcom_q6v5_pas.c
 +++ b/drivers/remoteproc/qcom_q6v5_pas.c
-@@ -567,6 +567,13 @@ static const struct rproc_ops qcom_pas_minidump_ops = {
- 	.coredump = qcom_pas_minidump,
+@@ -615,6 +615,13 @@ static const struct rproc_ops qcom_pas_minidump_ops = {
+ 	.attach = qcom_pas_attach,
  };
  
 +static const struct rproc_ops qcom_pas_ops_no_reset = {
@@ -47,7 +47,7 @@ index 5be115a10..a44026aca 100644
  static int qcom_pas_init_clock(struct qcom_pas *pas)
  {
  	pas->xo = devm_clk_get(pas->dev, "xo");
-@@ -802,6 +809,9 @@ static int qcom_pas_probe(struct platform_device *pdev)
+@@ -850,6 +857,9 @@ static int qcom_pas_probe(struct platform_device *pdev)
  	if (desc->minidump_id)
  		ops = &qcom_pas_minidump_ops;
  
@@ -57,7 +57,7 @@ index 5be115a10..a44026aca 100644
  	rproc = devm_rproc_alloc(&pdev->dev, desc->sysmon_name, ops, fw_name, sizeof(*pas));
  
  	if (!rproc) {
-@@ -810,10 +820,14 @@ static int qcom_pas_probe(struct platform_device *pdev)
+@@ -858,10 +868,14 @@ static int qcom_pas_probe(struct platform_device *pdev)
  	}
  
  	rproc->has_iommu = of_property_present(pdev->dev.of_node, "iommus");
@@ -75,7 +75,7 @@ index 5be115a10..a44026aca 100644
  	rproc_coredump_set_elf_info(rproc, ELFCLASS32, EM_NONE);
  
  	pas = rproc->priv;
-@@ -874,6 +888,13 @@ static int qcom_pas_probe(struct platform_device *pdev)
+@@ -922,6 +936,13 @@ static int qcom_pas_probe(struct platform_device *pdev)
  	 */
  	qcom_q6v5_read_smp2p_state(&pas->q6v5);
  
@@ -89,7 +89,7 @@ index 5be115a10..a44026aca 100644
  	qcom_add_glink_subdev(rproc, &pas->glink_subdev, desc->ssr_name);
  	qcom_add_smd_subdev(rproc, &pas->smd_subdev);
  	qcom_add_pdm_subdev(rproc, &pas->pdm_subdev);
-@@ -915,6 +936,7 @@ static int qcom_pas_probe(struct platform_device *pdev)
+@@ -967,6 +988,7 @@ static int qcom_pas_probe(struct platform_device *pdev)
  	qcom_remove_pdm_subdev(rproc, &pas->pdm_subdev);
  	qcom_remove_smd_subdev(rproc, &pas->smd_subdev);
  	qcom_remove_glink_subdev(rproc, &pas->glink_subdev);
@@ -97,7 +97,7 @@ index 5be115a10..a44026aca 100644
  	qcom_q6v5_deinit(&pas->q6v5);
  detach_proxy_pds:
  	qcom_pas_pds_detach(pas, pas->proxy_pds, pas->proxy_pd_count);
-@@ -922,6 +944,7 @@ static int qcom_pas_probe(struct platform_device *pdev)
+@@ -974,6 +996,7 @@ static int qcom_pas_probe(struct platform_device *pdev)
  	qcom_pas_unassign_memory_region(pas);
  free_rproc:
  	device_init_wakeup(pas->dev, false);
@@ -105,7 +105,7 @@ index 5be115a10..a44026aca 100644
  
  	return ret;
  }
-@@ -930,6 +953,9 @@ static void qcom_pas_remove(struct platform_device *pdev)
+@@ -982,6 +1005,9 @@ static void qcom_pas_remove(struct platform_device *pdev)
  {
  	struct qcom_pas *pas = platform_get_drvdata(pdev);
  
@@ -116,5 +116,5 @@ index 5be115a10..a44026aca 100644
  
  	qcom_q6v5_deinit(&pas->q6v5);
 -- 
-2.52.0
+2.55.0
 

@@ -40,6 +40,8 @@
 
 ### 补丁来源
 
+补丁链以 stable 分支的 Linux **7.2.9** 为基线，CI 和本地构建默认使用 `v7.2.9`。构建与校验方法见 [内核说明](kernel_7.2.9_rebase_zh.md)。
+
 - `upstream/*`, `others/0017`：来自 [right-0903/linux-gaokun](https://github.com/right-0903/linux-gaokun)，涵盖基础 SC8280XP / gaokun3 使能、显示点亮、EC 挂起恢复、ADSP FastRPC 以及 DSI 稳定性相关改动
 - `others/0001`：来自 [whitelewi1-ctrl/matebook-e-go-linux](https://github.com/whitelewi1-ctrl/matebook-e-go-linux)，用于在蓝牙地址无效时避免设置 `USE_BDADDR_PROPERTY`
 - `others/0002`：本仓库内的本地改动，用于启用 DSC 以及 60 Hz / 120 Hz 切换

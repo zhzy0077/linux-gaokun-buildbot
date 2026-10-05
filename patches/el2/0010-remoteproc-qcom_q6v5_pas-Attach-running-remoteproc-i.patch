@@ -1,7 +1,7 @@
-From 7a5f383c491b2b676277a37885f8f4334ed6cb0b Mon Sep 17 00:00:00 2001
+From daecec2cbea7cc28cd9f32388712811f2d0bee92 Mon Sep 17 00:00:00 2001
 From: Stephan Gerhold <stephan.gerhold@linaro.org>
 Date: Tue, 5 Aug 2025 17:44:32 +0200
-Subject: [PATCH 10/22] remoteproc: qcom_q6v5_pas: Attach running remoteproc if
+Subject: [PATCH] remoteproc: qcom_q6v5_pas: Attach running remoteproc if
  firmware is missing
 
 A remoteproc might be already running during boot, e.g. because it was
@@ -29,14 +29,14 @@ started during boot and attached (or restarted) later.
 
 Signed-off-by: Stephan Gerhold <stephan.gerhold@linaro.org>
 ---
- drivers/remoteproc/qcom_q6v5_pas.c | 64 +++++++++++++++++++++++++-----
- 1 file changed, 54 insertions(+), 10 deletions(-)
+ drivers/remoteproc/qcom_q6v5_pas.c | 64 +++++++++++++++++++++++-------
+ 1 file changed, 49 insertions(+), 15 deletions(-)
 
 diff --git a/drivers/remoteproc/qcom_q6v5_pas.c b/drivers/remoteproc/qcom_q6v5_pas.c
-index 1327e1875..5be115a10 100644
+index 113463ec0..ef92c8328 100644
 --- a/drivers/remoteproc/qcom_q6v5_pas.c
 +++ b/drivers/remoteproc/qcom_q6v5_pas.c
-@@ -227,10 +227,13 @@ static int qcom_pas_load(struct rproc *rproc, const struct firmware *fw)
+@@ -225,10 +225,13 @@ static int qcom_pas_load(struct rproc *rproc, const struct firmware *fw)
  	/* Store firmware handle to be used in qcom_pas_start() */
  	pas->firmware = fw;
  
@@ -54,7 +54,7 @@ index 1327e1875..5be115a10 100644
  
  	if (pas->dtb_pas_id) {
  		ret = request_firmware(&pas->dtb_firmware, pas->dtb_firmware_name, pas->dev);
-@@ -396,6 +399,28 @@ static void qcom_pas_handover(struct qcom_q6v5 *q6v5)
+@@ -391,6 +394,28 @@ static void qcom_pas_handover(struct qcom_q6v5 *q6v5)
  	qcom_pas_pds_disable(pas, pas->proxy_pds, pas->proxy_pd_count);
  }
  
@@ -83,7 +83,7 @@ index 1327e1875..5be115a10 100644
  static int qcom_pas_stop(struct rproc *rproc)
  {
  	struct qcom_pas *pas = rproc->priv;
-@@ -406,7 +431,7 @@ static int qcom_pas_stop(struct rproc *rproc)
+@@ -401,7 +426,7 @@ static int qcom_pas_stop(struct rproc *rproc)
  	if (ret == -ETIMEDOUT)
  		dev_err(pas->dev, "timed out on wait\n");
  
@@ -92,7 +92,7 @@ index 1327e1875..5be115a10 100644
  	if (ret && pas->decrypt_shutdown)
  		ret = qcom_pas_shutdown_poll_decrypt(pas);
  
-@@ -414,7 +439,7 @@ static int qcom_pas_stop(struct rproc *rproc)
+@@ -409,7 +434,7 @@ static int qcom_pas_stop(struct rproc *rproc)
  		dev_err(pas->dev, "failed to shutdown: %d\n", ret);
  
  	if (pas->dtb_pas_id) {
@@ -101,7 +101,7 @@ index 1327e1875..5be115a10 100644
  		if (ret)
  			dev_err(pas->dev, "failed to shutdown dtb: %d\n", ret);
  
-@@ -423,9 +448,11 @@ static int qcom_pas_stop(struct rproc *rproc)
+@@ -418,9 +443,11 @@ static int qcom_pas_stop(struct rproc *rproc)
  
  	qcom_pas_unmap_carveout(rproc, pas->mem_phys, pas->mem_size);
  
@@ -116,37 +116,30 @@ index 1327e1875..5be115a10 100644
  
  	if (pas->smem_host_id)
  		ret = qcom_smem_bust_hwspin_lock_by_host(pas->smem_host_id);
-@@ -433,6 +460,13 @@ static int qcom_pas_stop(struct rproc *rproc)
- 	return ret;
- }
+@@ -513,10 +540,9 @@ static int qcom_pas_attach(struct rproc *rproc)
+ 	bool stop_state;
+ 	int ret;
  
-+static int qcom_pas_attach(struct rproc *rproc)
-+{
-+	struct qcom_pas *pas = rproc->priv;
-+
-+	return qcom_q6v5_attach(&pas->q6v5);
-+}
-+
- static void *qcom_pas_da_to_va(struct rproc *rproc, u64 da, size_t len, bool *is_iomem)
- {
- 	struct qcom_pas *pas = rproc->priv;
-@@ -514,6 +548,7 @@ static const struct rproc_ops qcom_pas_ops = {
- 	.unprepare = qcom_pas_unprepare,
- 	.start = qcom_pas_start,
- 	.stop = qcom_pas_stop,
-+	.attach = qcom_pas_attach,
- 	.da_to_va = qcom_pas_da_to_va,
- 	.parse_fw = qcom_pas_parse_firmware,
- 	.load = qcom_pas_load,
-@@ -524,6 +559,7 @@ static const struct rproc_ops qcom_pas_minidump_ops = {
- 	.unprepare = qcom_pas_unprepare,
- 	.start = qcom_pas_start,
- 	.stop = qcom_pas_stop,
-+	.attach = qcom_pas_attach,
- 	.da_to_va = qcom_pas_da_to_va,
- 	.parse_fw = qcom_pas_parse_firmware,
- 	.load = qcom_pas_load,
-@@ -775,7 +811,7 @@ static int qcom_pas_probe(struct platform_device *pdev)
+-	pas->q6v5.handover_issued = true;
+-	enable_irq(pas->q6v5.handover_irq);
+-
+-	pas->q6v5.running = true;
++	ret = qcom_q6v5_attach(&pas->q6v5);
++	if (ret)
++		return ret;
+ 	ret = irq_get_irqchip_state(pas->q6v5.fatal_irq,
+ 				    IRQCHIP_STATE_LINE_LEVEL, &crash_state);
+ 	if (ret)
+@@ -560,7 +586,7 @@ static int qcom_pas_attach(struct rproc *rproc)
+ 	pas->rproc->state = RPROC_OFFLINE;
+ 	ret = -EINVAL;
+ disable_running:
+-	disable_irq(pas->q6v5.handover_irq);
++	qcom_q6v5_unprepare(&pas->q6v5);
+ 	pas->q6v5.running = false;
+ 
+ 	return ret;
+@@ -833,7 +859,7 @@ static int qcom_pas_probe(struct platform_device *pdev)
  
  	rproc->has_iommu = of_property_present(pdev->dev.of_node, "iommus");
  	if (desc->auto_boot)
@@ -155,7 +148,7 @@ index 1327e1875..5be115a10 100644
  	else
  		rproc->auto_boot = RPROC_AUTO_BOOT_DISABLED;
  	rproc_coredump_set_elf_info(rproc, ELFCLASS32, EM_NONE);
-@@ -830,6 +866,14 @@ static int qcom_pas_probe(struct platform_device *pdev)
+@@ -888,6 +914,14 @@ static int qcom_pas_probe(struct platform_device *pdev)
  	if (ret)
  		goto detach_proxy_pds;
  
@@ -171,5 +164,5 @@ index 1327e1875..5be115a10 100644
  	qcom_add_smd_subdev(rproc, &pas->smd_subdev);
  	qcom_add_pdm_subdev(rproc, &pas->pdm_subdev);
 -- 
-2.52.0
+2.55.0
 

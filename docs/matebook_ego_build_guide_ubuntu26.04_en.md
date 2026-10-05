@@ -47,8 +47,8 @@ mkdir -p ~/gaokun/matebook-build-ubuntu
 cd ~/gaokun
 # Get specified version of Linux mainline source
 if [ ! -d "mainline-linux" ]; then
-    git clone --depth 1 --branch v7.2-rc2 \
-        https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git \
+    git clone --depth 1 --branch v7.2.9 \
+        https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git \
         mainline-linux
 fi
 ```

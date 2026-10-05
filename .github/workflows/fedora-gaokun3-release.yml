@@ -10,7 +10,7 @@ on:
       kernel_tag:
         description: Linux kernel tag
         required: true
-        default: "v7.2-rc2"
+        default: "v7.2.9"
       desktop_environment:
         description: Space-separated desktop package groups or packages
         required: true

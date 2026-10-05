@@ -326,7 +326,7 @@ index 000000000..69fa4db9b
 +	};
 +};
 diff --git a/arch/arm64/boot/dts/qcom/sc8280xp-huawei-gaokun3.dts b/arch/arm64/boot/dts/qcom/sc8280xp-huawei-gaokun3.dts
-index f3c00be67..29ce40fc7 100644
+index cd575e20d..29ce40fc7 100644
 --- a/arch/arm64/boot/dts/qcom/sc8280xp-huawei-gaokun3.dts
 +++ b/arch/arm64/boot/dts/qcom/sc8280xp-huawei-gaokun3.dts
 @@ -11,6 +11,7 @@
@@ -683,7 +683,7 @@ index f3c00be67..29ce40fc7 100644
  		compatible = "huawei,gaokun3-ec";
  		reg = <0x38>;
  
--		interrupts-extended = <&tlmm 107 IRQ_TYPE_LEVEL_LOW>;
+-		interrupts-extended = <&tlmm 103 IRQ_TYPE_LEVEL_LOW>;
 +		interrupts-extended = <&pdc 215 IRQ_TYPE_LEVEL_LOW>;
 +		enable-gpios = <&tlmm 173 GPIO_ACTIVE_HIGH>;
 +		bat-gpios = <&tlmm 41 GPIO_ACTIVE_HIGH>;
@@ -1102,7 +1102,7 @@ index f3c00be67..29ce40fc7 100644
 +#include "sc8280xp-huawei-gaokun3-camera.dtsi"
 diff --git a/arch/arm64/configs/gaokun3_defconfig b/arch/arm64/configs/gaokun3_defconfig
 new file mode 100644
-index 000000000..f95adc9bf
+index 000000000..b961ddde8
 --- /dev/null
 +++ b/arch/arm64/configs/gaokun3_defconfig
 @@ -0,0 +1,491 @@
