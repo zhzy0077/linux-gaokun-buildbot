@@ -1,0 +1,138 @@
+{
+  "firmware_source_package": "linux-firmware-gaokun3-20260512-1.fc44.noarch",
+  "added_missing_firmware": [
+    {
+      "path": "/usr/lib/firmware/qca/hpbtfw21.tlv",
+      "sha256": "a911f66a137ec8b9e65f90942e1c21ea2604734a88e486519b77e750d0fc20d2"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21.301",
+      "sha256": "2f545011aa35877859e3a2fc67326858c4e86d6f8cabdc403f58b340247a188c"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21.302",
+      "sha256": "2f545011aa35877859e3a2fc67326858c4e86d6f8cabdc403f58b340247a188c"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21.309",
+      "sha256": "13cb6916508103995a5d101780812fee0badd563fb233a4eb15d170fe729ff4d"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21.30a",
+      "sha256": "54c134b644809aa629c6a157f0b42a1e52e7ebf2011b46a87a13374796a0ab93"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21.b10c",
+      "sha256": "bcbb714c143fb4f02859661462430aa298499b1a7a6752053c7c2ff2f9827535"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21.b111",
+      "sha256": "bcbb714c143fb4f02859661462430aa298499b1a7a6752053c7c2ff2f9827535"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21.b8c",
+      "sha256": "583a56cc65f2ac3ede593818827aa75f5ab9163c6ecda655ef2e06f1a081e91c"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21.b9f",
+      "sha256": "1328ac1cdd07e99913d642812f1ee94996abd4060ee69f5128cb4fb035c5bddc"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21.ba0",
+      "sha256": "1328ac1cdd07e99913d642812f1ee94996abd4060ee69f5128cb4fb035c5bddc"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21.ba1",
+      "sha256": "c4519de1a540d5993662212e6ab12061a83ca73a5d756e3b1b4f575aaa445279"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21.ba2",
+      "sha256": "c4519de1a540d5993662212e6ab12061a83ca73a5d756e3b1b4f575aaa445279"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21.ba3",
+      "sha256": "466a5d2c68743e0c079c775a20335c7c93910b0aa2158a95901bbb1c9def05c3"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21.ba4",
+      "sha256": "466a5d2c68743e0c079c775a20335c7c93910b0aa2158a95901bbb1c9def05c3"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21.baa",
+      "sha256": "380da8b57121ac38c258eb462c8953a43eb39d9eca2f5e4ca45101be6116ecec"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21.bb8",
+      "sha256": "a0c97e62cc676318a177632290f1cb7c94cd87240f11cc4b34320b2abd1134fc"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21.bin",
+      "sha256": "1328ac1cdd07e99913d642812f1ee94996abd4060ee69f5128cb4fb035c5bddc"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21g.301",
+      "sha256": "10d8c92a85df0ab7a0fd6e5b595ecff3a06550628f406c05c82a2a0f8f9c7e48"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21g.302",
+      "sha256": "10d8c92a85df0ab7a0fd6e5b595ecff3a06550628f406c05c82a2a0f8f9c7e48"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21g.309",
+      "sha256": "9e79720dbfb5b375be9cb4e92767315cb9542e3e9dc13cb72c24af8e01f4d49b"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21g.30a",
+      "sha256": "14cb80c96e457ef431f76984d8cd0c5524021fc993898636e46b56bab67ebd7b"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21g.b10c",
+      "sha256": "61b4bd03d85b4bf167029469a3dcb26efd63745c24101ffb964841ab71215d9c"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21g.b111",
+      "sha256": "61b4bd03d85b4bf167029469a3dcb26efd63745c24101ffb964841ab71215d9c"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21g.b8c",
+      "sha256": "c1a49a8080e1b80a2f0d0bab5959c759e5c76184168d4b4dc3209b4aa87aa818"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21g.b9f",
+      "sha256": "59b7b01dc27c267914c12c0c155ea485dd948d4cc3c0aa35a60f5b5472e87ac6"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21g.ba0",
+      "sha256": "59b7b01dc27c267914c12c0c155ea485dd948d4cc3c0aa35a60f5b5472e87ac6"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21g.ba1",
+      "sha256": "289ec8316d59890ada2b0bd0701e1bcc677252a45978dda0f39bc9521a50c8f9"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21g.ba2",
+      "sha256": "289ec8316d59890ada2b0bd0701e1bcc677252a45978dda0f39bc9521a50c8f9"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21g.ba3",
+      "sha256": "774ea0e6643e1215de0faaa5b4bf2be211ab9d6fa19549f950b9865da903cc5f"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21g.ba4",
+      "sha256": "774ea0e6643e1215de0faaa5b4bf2be211ab9d6fa19549f950b9865da903cc5f"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21g.baa",
+      "sha256": "5e963c6dd971c57108446ae763d16589df7367c57a949bdd08c2e440b1ea2b8e"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21g.bb8",
+      "sha256": "4316e0c175c126e066c498674c71e57c33557de5e526ef0e3428c986d1c20f34"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/hpnv21g.bin",
+      "sha256": "59b7b01dc27c267914c12c0c155ea485dd948d4cc3c0aa35a60f5b5472e87ac6"
+    }
+  ],
+  "existing_firmware_overwritten": false
+}

@@ -93,6 +93,12 @@ jobs:
             gaokun3-packages-rpm-ccache-${{ env.KERNEL_TAG }}-
             gaokun3-packages-rpm-ccache-
 
+      - name: Check platform and installer regressions
+        run: |
+          GAOKUN_UPSTREAM_DTS="$KERN_SRC/arch/arm64/boot/dts/qcom/sc8280xp-huawei-gaokun3.dts" \
+          GAOKUN_UPSTREAM_CPUINFO="$KERN_SRC/arch/arm64/kernel/cpuinfo.c" \
+            python3 -m unittest discover -s tests -v
+
       - name: Build gaokun kernel variants
         run: |
           set -euxo pipefail
@@ -119,7 +125,8 @@ jobs:
             --user root \
             "fedora:44" \
             bash -euxo pipefail -c '
-              dnf -y install gcc make rpm-build kmod elfutils-libelf-devel tar gzip rsync
+              dnf -y install gcc make rpm-build kmod elfutils-libelf-devel tar gzip rsync systemd-rpm-macros alsa-ucm pykickstart
+              ksvalidator -v F44 tools/installer/interactive-defaults.ks
               chmod +x scripts/ci/70_build_package_rpms.sh
               scripts/ci/70_build_package_rpms.sh
             '

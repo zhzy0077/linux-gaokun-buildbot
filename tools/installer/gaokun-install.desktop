@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Install Fedora on Gaokun
+Name[zh_CN]=安装 Fedora 到 Gaokun
+Comment[zh_CN]=使用 Anaconda 配置 Btrfs、LUKS 加密和 Gaokun 引导
+Exec=/usr/local/bin/gaokun-install
+Icon=org.fedoraproject.AnacondaInstaller
+Terminal=false
+Categories=System;
+StartupNotify=true
+StartupWMClass=liveinst

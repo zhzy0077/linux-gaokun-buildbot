@@ -12,6 +12,7 @@
 #include<linux/dev_printk.h>
 
 #include <linux/delay.h>
+#include <linux/gpio/consumer.h>
 #include <linux/input/mt.h>
 #include <linux/input/touchscreen.h>
 #include <linux/interrupt.h>
@@ -127,6 +128,7 @@ struct himax_ts_data {
 	bool panel_enabled;
 	bool shutting_down;
 	struct gpio_desc *gpiod_rst;
+	struct gpio_desc *gpiod_mode;
 	struct device *dev;
 	struct spi_device *spi;
 	struct input_dev *input_dev;
@@ -373,6 +375,13 @@ err:
 
 static void himax_pin_reset(struct himax_ts_data *ts)
 {
+	/*
+	 * The IC samples GPIO174 when firmware reloads: low selects SPI.
+	 * Reassert it for probe, manual recovery and panel resume resets.
+	 */
+	if (ts->gpiod_mode)
+		gpiod_set_value_cansleep(ts->gpiod_mode, 0);
+
 	/* TODO: reduce to 10ms, 20ms? */
 	gpiod_set_value_cansleep(ts->gpiod_rst, 1);
 	usleep_range(20000, 20100);
@@ -1360,6 +1369,14 @@ static int himax_spi_probe(struct spi_device *spi)
 		return -ENOMEM;
 
 	ts->dev = &spi->dev;
+
+	/* Select SPI before asserting reset; do not inherit the UEFI mode. */
+	ts->gpiod_mode = devm_gpiod_get_optional(ts->dev, "mode", GPIOD_OUT_LOW);
+	if (IS_ERR(ts->gpiod_mode))
+		return dev_err_probe(ts->dev, PTR_ERR(ts->gpiod_mode),
+				     "failed to get mode-select GPIO\n");
+	if (!ts->gpiod_mode)
+		dev_warn(ts->dev, "mode-gpios missing; SPI mode depends on firmware\n");
 
 	ts->gpiod_rst = devm_gpiod_get_optional(ts->dev, "reset", GPIOD_OUT_HIGH);
 	if (IS_ERR(ts->gpiod_rst)) {

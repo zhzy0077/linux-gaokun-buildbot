@@ -3,7 +3,7 @@
 
 Name:           linux-firmware-gaokun3
 Version:        @FW_VERSION@
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Firmware bundle for gaokun3
 License:        Redistributable, no modification permitted
 BuildArch:      noarch
@@ -30,5 +30,8 @@ cp -a usr %{buildroot}/
 /usr/lib/firmware/qcom/*
 
 %changelog
+* Mon Oct 05 2026 Gaokun buildbot - @FW_VERSION@-2
+- Include verified original WCN6855 non-g firmware and board NVM variants
+
 * Sat Mar 28 2026 cool <bilibili@att.net> - @FW_VERSION@-1
 - Build gaokun3 firmware RPM

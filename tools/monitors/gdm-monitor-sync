@@ -1,40 +1,32 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SRC_MONITORS="/home/user/.config/monitors.xml"
-SENTINEL="/var/lib/.gaokun-monitors-synced"
-
-pick_gdm_dir() {
-  local candidate
-
-  for candidate in \
-    /var/lib/gdm3/.config \
-    /var/lib/gdm3/seat0/config \
-    /var/lib/gdm/.config \
-    /var/lib/gdm/seat0/config; do
-    if [[ -d "$candidate" ]]; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  done
-
-  return 1
-}
-
+# Seed legacy GDM homes. Transient greeter/onboarding sessions use the
+# system-wide XDG monitors.xml installed by the platform package.
+# The optional argument lets distro packages choose their data directory.
+SRC_MONITORS="${1:-/usr/local/share/gaokun/monitors.xml}"
 [[ -f "$SRC_MONITORS" ]] || exit 0
-[[ ! -e "$SENTINEL" ]] || exit 0
 
-for _ in $(seq 1 30); do
-  if GDM_DIR="$(pick_gdm_dir)"; then
-    DST_MONITORS="$GDM_DIR/monitors.xml"
-    cp "$SRC_MONITORS" "$DST_MONITORS"
-    chown --reference="$GDM_DIR" "$DST_MONITORS"
-    touch "$SENTINEL"
-    systemctl disable gdm-monitor-sync.service || true
-    systemctl try-restart gdm.service || true
+for user in gdm Debian-gdm; do
+  if account="$(getent passwd "$user")"; then
+    IFS=: read -r _ _ uid gid _ user_home _ <<< "$account"
+    [[ "$user_home" == /* && "$user_home" != / ]] || exit 1
+    [[ -d "$user_home" ]] || continue
+    config_dir="$user_home/.config"
+    destination="$config_dir/monitors.xml"
+    # Keep existing display settings, including an administrator's symlink.
+    [[ ! -e "$destination" && ! -L "$destination" ]] || exit 0
+    [[ ! -L "$config_dir" ]] || exit 1
+    if [[ ! -d "$config_dir" ]]; then
+      install -d -m 0700 -o "$uid" -g "$gid" "$config_dir"
+    fi
+    install -m 0600 -o "$uid" -g "$gid" "$SRC_MONITORS" "$destination"
+    if command -v restorecon >/dev/null 2>&1; then
+      restorecon -F "$config_dir" "$destination"
+    fi
     exit 0
   fi
-  sleep 1
 done
 
+# No GDM account yet; the service can retry after GDM is installed.
 exit 0

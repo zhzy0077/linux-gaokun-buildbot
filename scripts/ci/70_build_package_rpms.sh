@@ -97,7 +97,7 @@ build_variant_rpms() {
   cat > "$kernel_stage/usr/lib/dracut/dracut.conf.d/$dracut_conf" <<'EOF'
 hostonly="no"
 add_drivers+=" btrfs nvme phy-qcom-qmp-pcie phy-qcom-qmp-combo phy-qcom-qmp-usb phy-qcom-snps-femto-v2 usb-storage uas typec pci-pwrctrl-pwrseq ath11k ath11k_pci i2c-hid-of lpasscc_sc8280xp snd-soc-sc8280xp pinctrl_sc8280xp_lpass_lpi "
-install_items+=" /lib/firmware/qcom/sc8280xp/HUAWEI/gaokun3/qcslpi8280.mbn /lib/firmware/qcom/sc8280xp/HUAWEI/gaokun3/qcadsp8280.mbn /lib/firmware/qcom/sc8280xp/HUAWEI/gaokun3/qccdsp8280.mbn /lib/firmware/qcom/sc8280xp/SC8280XP-HUAWEI-GAOKUN3-tplg.bin /lib/firmware/qcom/sc8280xp/HUAWEI/gaokun3/audioreach-tplg.bin "
+install_items+=" /lib/firmware/qcom/a660_sqe.fw /lib/firmware/qcom/a660_gmu.bin /lib/firmware/qcom/sc8280xp/HUAWEI/gaokun3/qcdxkmsuc8280.mbn /lib/firmware/qcom/sc8280xp/HUAWEI/gaokun3/qcslpi8280.mbn /lib/firmware/qcom/sc8280xp/HUAWEI/gaokun3/qcadsp8280.mbn /lib/firmware/qcom/sc8280xp/HUAWEI/gaokun3/qccdsp8280.mbn /lib/firmware/qcom/sc8280xp/SC8280XP-HUAWEI-GAOKUN3-tplg.bin /lib/firmware/qcom/sc8280xp/HUAWEI/gaokun3/audioreach-tplg.bin "
 EOF
 
   make -C "$src_dir" O="$out_dir" ARCH=arm64 INSTALL_MOD_PATH="$modules_raw_stage" modules_install
@@ -223,6 +223,8 @@ if [[ "$BUILD_EL2" == "true" ]]; then
 fi
 
 build_firmware_rpm
+bash "$GAOKUN_DIR/scripts/ci/71_build_platform_rpm.sh"
+PLATFORM_RPM="$(cat "$WORKDIR/platform-rpm-name.txt")"
 
 EL2_MANIFEST_BLOCK=""
 EL2_RELEASE_BLOCK=""
@@ -265,7 +267,8 @@ cat >"$ARTIFACT_DIR/package-manifest.json" <<EOF
     }${EL2_MANIFEST_BLOCK}
   },
   "packages": {
-    "firmware": "${FIRMWARE_RPM}"
+    "firmware": "${FIRMWARE_RPM}",
+    "platform": "${PLATFORM_RPM}"
   }
 }
 EOF
@@ -287,4 +290,5 @@ cat >"$ARTIFACT_DIR/package-release-body.md" <<EOF
 - \`${DEVEL_RPM_STANDARD}\`
 ${EL2_RELEASE_BLOCK}
 - \`${FIRMWARE_RPM}\`
+- \`${PLATFORM_RPM}\`
 EOF

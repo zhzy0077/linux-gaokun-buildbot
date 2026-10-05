@@ -1,13 +1,14 @@
 From abe3d718c79bd22505bcff8e35e9b8cae13886e0 Mon Sep 17 00:00:00 2001
 From: cool <bilibili@att.net>
 Date: Sat, 11 Jul 2026 16:55:30 +0000
-Subject: [PATCH 20/20] arm64: gaokun3: import local dts and defconfig
+Subject: [PATCH 20/20] arm64: gaokun3: import board support
 
 ---
  .../qcom/sc8280xp-huawei-gaokun3-camera.dtsi  | 307 +++++++++++
- .../boot/dts/qcom/sc8280xp-huawei-gaokun3.dts | 449 ++++++++++++----
- arch/arm64/configs/gaokun3_defconfig          | 490 ++++++++++++++++++
- 3 files changed, 1145 insertions(+), 101 deletions(-)
+ .../boot/dts/qcom/sc8280xp-huawei-gaokun3.dts | 451 ++++++++++++----
+ arch/arm64/configs/gaokun3_defconfig          | 491 ++++++++++++++++++
+ arch/arm64/kernel/cpuinfo.c                  |   3 +
+ 4 files changed, 1151 insertions(+), 101 deletions(-)
  create mode 100644 arch/arm64/boot/dts/qcom/sc8280xp-huawei-gaokun3-camera.dtsi
  create mode 100644 arch/arm64/configs/gaokun3_defconfig
 
@@ -325,7 +326,7 @@ index 000000000..69fa4db9b
 +	};
 +};
 diff --git a/arch/arm64/boot/dts/qcom/sc8280xp-huawei-gaokun3.dts b/arch/arm64/boot/dts/qcom/sc8280xp-huawei-gaokun3.dts
-index f3c00be67..94e7eeb7e 100644
+index f3c00be67..29ce40fc7 100644
 --- a/arch/arm64/boot/dts/qcom/sc8280xp-huawei-gaokun3.dts
 +++ b/arch/arm64/boot/dts/qcom/sc8280xp-huawei-gaokun3.dts
 @@ -11,6 +11,7 @@
@@ -606,7 +607,7 @@ index f3c00be67..94e7eeb7e 100644
  };
  
  &dispcc0 {
-@@ -595,34 +625,58 @@ &gpi_dma2 {
+@@ -595,34 +625,60 @@ &gpi_dma2 {
  
  &gpu {
  	status = "okay";
@@ -652,6 +653,8 @@ index f3c00be67..94e7eeb7e 100644
 +		// TODO: power supply, always on rencently
  		interrupts-extended = <&tlmm 175 IRQ_TYPE_LEVEL_LOW>;
 +		reset-gpios = <&tlmm 99 GPIO_ACTIVE_LOW>;
++		/* The driver drives this low to select SPI before firmware reload. */
++		mode-gpios = <&tlmm 174 GPIO_ACTIVE_HIGH>;
 +
 +		panel = <&panel>;
  
@@ -676,7 +679,7 @@ index f3c00be67..94e7eeb7e 100644
  };
  
  &i2c15 {
-@@ -637,7 +691,15 @@ embedded-controller@38 {
+@@ -637,7 +693,15 @@ embedded-controller@38 {
  		compatible = "huawei,gaokun3-ec";
  		reg = <0x38>;
  
@@ -693,7 +696,7 @@ index f3c00be67..94e7eeb7e 100644
  
  		#address-cells = <1>;
  		#size-cells = <0>;
-@@ -647,7 +709,6 @@ connector@0 {
+@@ -647,7 +711,6 @@ connector@0 {
  			reg = <0>;
  			power-role = "dual";
  			data-role = "dual";
@@ -701,7 +704,7 @@ index f3c00be67..94e7eeb7e 100644
  			ports {
  				#address-cells = <1>;
  				#size-cells = <0>;
-@@ -655,7 +716,7 @@ ports {
+@@ -655,7 +718,7 @@ ports {
  				port@0 {
  					reg = <0>;
  
@@ -710,7 +713,7 @@ index f3c00be67..94e7eeb7e 100644
  						remote-endpoint = <&usb_0_dwc3_hs>;
  					};
  				};
-@@ -663,7 +724,7 @@ ucsi0_hs_in: endpoint {
+@@ -663,7 +726,7 @@ ucsi0_hs_in: endpoint {
  				port@1 {
  					reg = <1>;
  
@@ -719,7 +722,7 @@ index f3c00be67..94e7eeb7e 100644
  						remote-endpoint = <&usb_0_qmpphy_out>;
  					};
  				};
-@@ -725,7 +786,8 @@ &mdss0_dp0 {
+@@ -725,7 +788,8 @@ &mdss0_dp0 {
  };
  
  &mdss0_dp0_out {
@@ -729,7 +732,7 @@ index f3c00be67..94e7eeb7e 100644
  	remote-endpoint = <&usb_0_qmpphy_dp_in>;
  };
  
-@@ -734,10 +796,92 @@ &mdss0_dp1 {
+@@ -734,10 +798,92 @@ &mdss0_dp1 {
  };
  
  &mdss0_dp1_out {
@@ -823,7 +826,7 @@ index f3c00be67..94e7eeb7e 100644
  &pcie2a {
  	perst-gpios = <&tlmm 143 GPIO_ACTIVE_LOW>;
  	wake-gpios = <&tlmm 145 GPIO_ACTIVE_LOW>;
-@@ -785,6 +929,9 @@ wifi@0 {
+@@ -785,6 +931,9 @@ wifi@0 {
  		vddrfa0p8-supply = <&vreg_pmu_rfa_0p8>;
  		vddrfa1p2-supply = <&vreg_pmu_rfa_1p2>;
  		vddrfa1p8-supply = <&vreg_pmu_rfa_1p7>;
@@ -833,7 +836,7 @@ index f3c00be67..94e7eeb7e 100644
  	};
  };
  
-@@ -969,13 +1116,18 @@ &remoteproc_nsp0 {
+@@ -969,13 +1118,18 @@ &remoteproc_nsp0 {
  	status = "okay";
  };
  
@@ -853,7 +856,7 @@ index f3c00be67..94e7eeb7e 100644
  	audio-routing = "SpkrLeft IN", "WSA_SPK1 OUT",
  			"SpkrRight IN", "WSA_SPK2 OUT",
  			"IN1_HPHL", "HPHL_OUT",
-@@ -1125,6 +1277,8 @@ bluetooth {
+@@ -1125,6 +1279,8 @@ bluetooth {
  		vddrfa1p7-supply = <&vreg_pmu_rfa_1p7>;
  
  		max-speed = <3200000>;
@@ -862,7 +865,7 @@ index f3c00be67..94e7eeb7e 100644
  	};
  };
  
-@@ -1141,7 +1295,7 @@ &usb_0_dwc3_hs {
+@@ -1141,7 +1297,7 @@ &usb_0_dwc3_hs {
  };
  
  &usb_0_hsphy {
@@ -871,7 +874,7 @@ index f3c00be67..94e7eeb7e 100644
  	vdda18-supply = <&vreg_l1c>;
  	vdda33-supply = <&vreg_l7d>;
  
-@@ -1149,9 +1303,10 @@ &usb_0_hsphy {
+@@ -1149,9 +1305,10 @@ &usb_0_hsphy {
  };
  
  &usb_0_qmpphy {
@@ -884,7 +887,7 @@ index f3c00be67..94e7eeb7e 100644
  	orientation-switch;
  
  	status = "okay";
-@@ -1178,7 +1333,7 @@ &usb_1_dwc3_hs {
+@@ -1178,7 +1335,7 @@ &usb_1_dwc3_hs {
  };
  
  &usb_1_hsphy {
@@ -893,7 +896,7 @@ index f3c00be67..94e7eeb7e 100644
  	vdda18-supply = <&vreg_l1c>;
  	vdda33-supply = <&vreg_l13c>;
  
-@@ -1186,9 +1341,10 @@ &usb_1_hsphy {
+@@ -1186,9 +1343,10 @@ &usb_1_hsphy {
  };
  
  &usb_1_qmpphy {
@@ -906,7 +909,7 @@ index f3c00be67..94e7eeb7e 100644
  	orientation-switch;
  
  	status = "okay";
-@@ -1207,7 +1363,7 @@ &usb_2 {
+@@ -1207,7 +1365,7 @@ &usb_2 {
  };
  
  &usb_2_hsphy0 {
@@ -915,7 +918,7 @@ index f3c00be67..94e7eeb7e 100644
  	vdda18-supply = <&vreg_l1c>;
  	vdda33-supply = <&vreg_l7d>;
  
-@@ -1215,7 +1371,7 @@ &usb_2_hsphy0 {
+@@ -1215,7 +1373,7 @@ &usb_2_hsphy0 {
  };
  
  &usb_2_hsphy1 {
@@ -924,7 +927,7 @@ index f3c00be67..94e7eeb7e 100644
  	vdda18-supply = <&vreg_l1c>;
  	vdda33-supply = <&vreg_l7d>;
  
-@@ -1223,7 +1379,7 @@ &usb_2_hsphy1 {
+@@ -1223,7 +1381,7 @@ &usb_2_hsphy1 {
  };
  
  &usb_2_hsphy2 {
@@ -933,7 +936,7 @@ index f3c00be67..94e7eeb7e 100644
  	vdda18-supply = <&vreg_l8c>;
  	vdda33-supply = <&vreg_l2d>;
  
-@@ -1231,7 +1387,7 @@ &usb_2_hsphy2 {
+@@ -1231,7 +1389,7 @@ &usb_2_hsphy2 {
  };
  
  &usb_2_hsphy3 {
@@ -942,7 +945,7 @@ index f3c00be67..94e7eeb7e 100644
  	vdda18-supply = <&vreg_l8c>;
  	vdda33-supply = <&vreg_l2d>;
  
-@@ -1239,15 +1395,15 @@ &usb_2_hsphy3 {
+@@ -1239,15 +1397,15 @@ &usb_2_hsphy3 {
  };
  
  &usb_2_qmpphy0 {
@@ -962,7 +965,7 @@ index f3c00be67..94e7eeb7e 100644
  
  	status = "okay";
  };
-@@ -1300,8 +1456,28 @@ hastings_reg_en: hastings-reg-en-state {
+@@ -1300,8 +1458,28 @@ hastings_reg_en: hastings-reg-en-state {
  };
  
  &tlmm {
@@ -992,7 +995,7 @@ index f3c00be67..94e7eeb7e 100644
  
  	bt_default: bt-default-state {
  		hstp-bt-en-pins {
-@@ -1318,6 +1494,36 @@ hstp-sw-ctrl-pins {
+@@ -1318,6 +1496,36 @@ hstp-sw-ctrl-pins {
  		};
  	};
  
@@ -1029,7 +1032,7 @@ index f3c00be67..94e7eeb7e 100644
  	i2c4_default: i2c4-default-state {
  		pins = "gpio171", "gpio172";
  		function = "qup4";
-@@ -1332,6 +1538,13 @@ i2c15_default: i2c15-default-state {
+@@ -1332,6 +1540,13 @@ i2c15_default: i2c15-default-state {
  		bias-pull-up;
  	};
  
@@ -1043,7 +1046,7 @@ index f3c00be67..94e7eeb7e 100644
  	mode_pin_active: mode-pin-state {
  		pins = "gpio26";
  		function = "gpio";
-@@ -1411,6 +1624,39 @@ perst-n-pins {
+@@ -1411,6 +1626,39 @@ perst-n-pins {
  		};
  	};
  
@@ -1083,7 +1086,7 @@ index f3c00be67..94e7eeb7e 100644
  	ts0_default: ts0-default-state {
  		int-n-pins {
  			pins = "gpio175";
-@@ -1424,7 +1670,6 @@ reset-n-pins {
+@@ -1424,7 +1672,6 @@ reset-n-pins {
  			function = "gpio";
  			drive-strength = <2>;
  			bias-disable;
@@ -1091,7 +1094,7 @@ index f3c00be67..94e7eeb7e 100644
  		};
  	};
  
-@@ -1485,3 +1730,5 @@ wlan_en: wlan-en-state {
+@@ -1485,3 +1732,5 @@ wlan_en: wlan-en-state {
  		bias-pull-down;
  	};
  };
@@ -1102,7 +1105,7 @@ new file mode 100644
 index 000000000..f95adc9bf
 --- /dev/null
 +++ b/arch/arm64/configs/gaokun3_defconfig
-@@ -0,0 +1,490 @@
+@@ -0,0 +1,491 @@
 +CONFIG_LOCALVERSION="-gaokun3"
 +# CONFIG_LOCALVERSION_AUTO is not set
 +CONFIG_SYSVIPC=y
@@ -1192,6 +1195,7 @@ index 000000000..f95adc9bf
 +CONFIG_NF_CONNTRACK_ZONES=y
 +CONFIG_NF_CONNTRACK_EVENTS=y
 +CONFIG_NF_CONNTRACK_FTP=m
++CONFIG_NF_CONNTRACK_NETBIOS_NS=m
 +CONFIG_NF_CONNTRACK_TFTP=m
 +CONFIG_NF_CT_NETLINK=m
 +CONFIG_NF_TABLES=m
@@ -1593,6 +1597,26 @@ index 000000000..f95adc9bf
 +CONFIG_DEBUG_FS=y
 +# CONFIG_FTRACE is not set
 +# CONFIG_RUNTIME_TESTING_MENU is not set
+diff --git a/arch/arm64/kernel/cpuinfo.c b/arch/arm64/kernel/cpuinfo.c
+--- a/arch/arm64/kernel/cpuinfo.c
++++ b/arch/arm64/kernel/cpuinfo.c
+@@ -17,6 +17,7 @@
+ #include <linux/elf.h>
+ #include <linux/init.h>
+ #include <linux/kernel.h>
++#include <linux/of.h>
+ #include <linux/personality.h>
+ #include <linux/preempt.h>
+ #include <linux/printk.h>
+@@ -236,6 +237,8 @@
+ 	if (compat)
+ 		seq_printf(m, "model name\t: ARMv8 Processor rev %d (%s)\n",
+ 			   MIDR_REVISION(midr), COMPAT_ELF_PLATFORM);
++	else if (of_machine_is_compatible("huawei,gaokun3"))
++		seq_puts(m, "model name\t: Snapdragon (TM) 8cx Gen 3 @ 3.0 GHz\n");
+ 
+ 	seq_printf(m, "BogoMIPS\t: %lu.%02lu\n",
+ 		   loops_per_jiffy / (500000UL/HZ),
 -- 
 2.55.0
 

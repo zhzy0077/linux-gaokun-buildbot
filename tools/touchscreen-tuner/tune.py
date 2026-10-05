@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """EGoTouchRev-Linux 触屏算法调节 GUI"""
 
-from gi.repository import Adw, GLib, Gtk, Pango
 import glob
 import os
 import pwd
@@ -15,6 +14,8 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
+
+from gi.repository import Adw, GLib, Gtk, Pango
 
 
 WRITE_ENABLED = "--write-enabled" in sys.argv

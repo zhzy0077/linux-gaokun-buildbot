@@ -1,15 +1,14 @@
 [Unit]
-Description=Sync user monitors.xml to GDM on first boot
-After=gdm.service
-Wants=gdm.service
-ConditionPathExists=/home/user/.config/monitors.xml
-ConditionPathExists=!/var/lib/.gaokun-monitors-synced
+Description=Set the default Gaokun display orientation for GDM
+After=local-fs.target systemd-sysusers.service
+Before=display-manager.service
+ConditionPathExists=/usr/local/share/gaokun/monitors.xml
 
 [Service]
 Type=oneshot
 ExecStart=/usr/local/bin/gdm-monitor-sync
 RemainAfterExit=yes
-TimeoutStartSec=70
+TimeoutStartSec=10
 
 [Install]
 WantedBy=graphical.target

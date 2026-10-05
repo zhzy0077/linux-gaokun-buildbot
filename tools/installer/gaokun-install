@@ -1,0 +1,18 @@
+#!/usr/bin/bash
+set -euo pipefail
+if [[ $(uname -m) != aarch64 || ! -d /sys/firmware/efi ]]; then
+    zenity --error --text='请从 Gaokun 安装 U 盘启动后运行安装器。'
+    exit 1
+fi
+zenity --question --title='安装 Fedora 到 Gaokun' --width=560 \
+    --ok-label='打开安装器' --cancel-label='取消' \
+    --text='本次测试将重建 NVMe 上原 Fedora 分区（约 269 GiB），其中 /、/home、/var 的数据会被清除。\n\n请在安装器的高级存储编辑器中，只将原 Fedora 分区格式化为 LUKS2 + Btrfs，并创建 root、home 子卷；EFI 分区复用、不格式化。编辑器在确认后立即修改磁盘，请先核对目标并设置加密密码。旧 Fedora 启动文件会备份到 U 盘。\n\n用户账户由安装后的 GNOME 初始设置创建。'
+policy="$(zenity --list --checklist --title='新系统的网络与远程登录' --width=650 --height=260 \
+    --text='这两项均需主动勾选。未保留网络连接时，请在首次设置中重新连接 Wi-Fi。' \
+    --column='启用' --column='选项' --column='说明' --hide-column=2 --print-column=2 \
+    FALSE copy-network '保留安装环境的 NetworkManager 连接（含已保存的 Wi-Fi 密码）' \
+    FALSE enable-ssh '新系统开机启用 SSH 远程登录服务')"
+args=()
+[[ "$policy" != *copy-network* ]] || args+=(--copy-network)
+[[ "$policy" != *enable-ssh* ]] || args+=(--enable-ssh)
+exec pkexec /usr/local/libexec/gaokun-install-backend "${args[@]}"

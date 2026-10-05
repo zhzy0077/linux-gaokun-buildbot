@@ -1,10 +1,10 @@
 [Unit]
-Description=Patch QCA Bluetooth NVM BDADDR
+Description=Maintain QCA Bluetooth NVM BDADDR (also prepared by the hci_uart modprobe hook)
 DefaultDependencies=no
 After=local-fs.target
 Before=bluetooth.service
 ConditionPathExists=/usr/local/bin/patch-nvm-bdaddr.py
-ConditionPathExists=/lib/firmware/qca/wcnhpnv21g.bin
+ConditionPathExistsGlob=/lib/firmware/qca/*hpnv21*
 
 [Service]
 Type=oneshot

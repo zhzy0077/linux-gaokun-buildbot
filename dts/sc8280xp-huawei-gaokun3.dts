@@ -659,6 +659,8 @@
 		// TODO: power supply, always on rencently
 		interrupts-extended = <&tlmm 175 IRQ_TYPE_LEVEL_LOW>;
 		reset-gpios = <&tlmm 99 GPIO_ACTIVE_LOW>;
+		/* The driver drives this low to select SPI before firmware reload. */
+		mode-gpios = <&tlmm 174 GPIO_ACTIVE_HIGH>;
 
 		panel = <&panel>;
 

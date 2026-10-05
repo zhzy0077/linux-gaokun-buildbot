@@ -25,11 +25,13 @@ The image pipeline now uses `systemd-boot` by default and can optionally build a
 
 The package pipeline builds and installs dedicated package sets:
 
-- **Fedora (RPM)**: `kernel-gaokun3`, `kernel-modules-gaokun3`, `kernel-devel-gaokun3`, `linux-firmware-gaokun3`
+- **Fedora (RPM)**: `kernel-gaokun3`, `kernel-modules-gaokun3`, `kernel-devel-gaokun3`, `linux-firmware-gaokun3`, `gaokun3-platform`
 - **Ubuntu (DEB)**: `linux-image-gaokun3`, `linux-modules-gaokun3`, `linux-headers-gaokun3`, `linux-firmware-gaokun3`
 - **Optional EL2 variants**: `*-gaokun3-el2` package set for the second EL2 kernel build
 - Ubuntu kernel image packages run `update-initramfs` during install/upgrade, which in turn refreshes the BLS entry through the distro `systemd-boot` hook.
 - Fedora kernel RPMs now ship a matching `dracut.conf.d` snippet and run `dracut` + `kernel-install add` in `%posttrans`, so installing or upgrading the package refreshes the initramfs and BLS entry automatically.
+
+`gaokun3-platform` contains the hardware configuration and desktop helpers. It can be built separately from the kernel; see the [platform RPM guide (Chinese)](docs/fedora_platform_rpm_zh.md). The RPM-based Anaconda workflow is documented in the [installer guide](tools/installer/README.md).
 
 ### Releases
 
@@ -75,6 +77,8 @@ The image and local-install workflows now follow the standard `kernel-install` +
 - Build guide – Ubuntu 26.04: [English](docs/matebook_ego_build_guide_ubuntu26.04_en.md) | [中文](docs/matebook_ego_build_guide_ubuntu26.04_zh.md)
 
 ## Feature Support
+
+Touchscreen mode-selection fix and validation: [GPIO 174 notes (Chinese)](docs/touchscreen_spi_mode_zh.md).
 
 For an overview of hardware support status on the device, see [right-0903/linux-gaokun `## Feature Support`](https://github.com/right-0903/linux-gaokun?tab=readme-ov-file#feature-support).
 

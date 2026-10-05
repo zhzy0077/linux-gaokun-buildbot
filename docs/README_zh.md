@@ -25,11 +25,13 @@
 
 软件包流水线会构建并安装专用软件包集：
 
-- **Fedora (RPM)**：`kernel-gaokun3`、`kernel-modules-gaokun3`、`kernel-devel-gaokun3`、`linux-firmware-gaokun3`
+- **Fedora (RPM)**：`kernel-gaokun3`、`kernel-modules-gaokun3`、`kernel-devel-gaokun3`、`linux-firmware-gaokun3`、`gaokun3-platform`
 - **Ubuntu (DEB)**：`linux-image-gaokun3`、`linux-modules-gaokun3`、`linux-headers-gaokun3`、`linux-firmware-gaokun3`
 - **可选 EL2 变体**：用于第二套 EL2 内核构建的 `*-gaokun3-el2` 软件包集
 - Ubuntu 内核镜像包在安装/升级时运行 `update-initramfs`，进而通过发行版的 `systemd-boot` 钩子刷新 BLS 条目。
 - Fedora 内核 RPM 现自带匹配的 `dracut.conf.d` 片段，并在 `%posttrans` 中运行 `dracut` + `kernel-install add`，因此安装或升级软件包会自动刷新 initramfs 和 BLS 条目。
+
+`gaokun3-platform` 包含硬件配置与桌面工具，可以单独构建，见[平台 RPM 说明](fedora_platform_rpm_zh.md)。安装流程与校验方法见 [Anaconda 安装器说明](../tools/installer/README.md)。
 
 ### Release 产物
 
@@ -75,6 +77,8 @@
 - 构建指南 – Ubuntu 26.04：[English](matebook_ego_build_guide_ubuntu26.04_en.md) | [中文](matebook_ego_build_guide_ubuntu26.04_zh.md)
 
 ## 功能支持
+
+触摸屏模式选择修复与验证：[GPIO 174 说明](touchscreen_spi_mode_zh.md)。
 
 设备硬件工作情况可参考 [right-0903/linux-gaokun 的 `## Feature Support`](https://github.com/right-0903/linux-gaokun?tab=readme-ov-file#feature-support)。
 

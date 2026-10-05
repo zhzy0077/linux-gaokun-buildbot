@@ -1,0 +1,146 @@
+%global debug_package %{nil}
+%global _debugsource_packages 0
+# The scripts are shared by Fedora releases; avoid a build-host Python ABI dependency.
+%global __brp_python_bytecompile %{nil}
+
+Name:           gaokun3-platform
+Version:        @PLATFORM_VERSION@
+Release:        3%{?dist}
+Summary:        Hardware configuration and desktop tools for Huawei Gaokun3
+# The existing tool sources do not declare a common SPDX license.
+License:        LicenseRef-Unknown
+BuildArch:      noarch
+Source0:        @SOURCE_NAME@
+BuildRequires:  alsa-ucm
+BuildRequires:  systemd-rpm-macros
+Requires:       alsa-ucm
+Requires:       bash
+Requires:       coreutils
+Requires:       /usr/bin/getent
+Requires:       python3
+Requires:       python3-gobject
+Requires:       gtk4
+Requires:       libadwaita
+Requires:       polkit
+Requires:       xdg-utils
+Requires:       pipewire
+Requires:       wireplumber
+%{?systemd_requires}
+
+%description
+Module loading, audio configuration, Bluetooth address setup, GDM display
+orientation and touchscreen tuning for the Huawei MateBook E Go 2023.
+System-wide XDG display defaults cover transient GDM and initial-setup users;
+regular accounts can override these defaults. Bluetooth NVM is prepared before
+the UART driver probes, and early PCM loading uses the Gaokun ALSA override.
+
+%prep
+%setup -q -c -T
+tar -xzf %{SOURCE0}
+
+%build
+
+%install
+for source in tools/image-assets/etc/modules-load.d/*.conf; do
+    install -Dm644 "$source" "%{buildroot}%{_prefix}/lib/modules-load.d/gaokun3-$(basename "$source")"
+done
+for source in tools/image-assets/etc/modprobe.d/*.conf; do
+    install -Dm644 "$source" "%{buildroot}%{_prefix}/lib/modprobe.d/gaokun3-$(basename "$source")"
+done
+# Fedora-specific policy stays out of the assets shared with Ubuntu images.
+install -Dm644 tools/audio/dist-alsa.conf %{buildroot}%{_sysconfdir}/modprobe.d/dist-alsa.conf
+install -Dm644 tools/bluetooth/bluetooth-nvm.conf %{buildroot}%{_prefix}/lib/modprobe.d/gaokun3-bluetooth-nvm.conf
+sed -i "s|/usr/local/bin/patch-nvm-bdaddr.py|%{_libexecdir}/gaokun3/patch-nvm-bdaddr.py|g" \
+    %{buildroot}%{_prefix}/lib/modprobe.d/gaokun3-bluetooth-nvm.conf
+for source in tools/bluetooth/93-gaokun-bluetooth.conf tools/audio/94-gaokun-alsa.conf; do
+    install -Dm644 "$source" "%{buildroot}%{_prefix}/lib/dracut/dracut.conf.d/$(basename "$source")"
+done
+install -Dm755 tools/bluetooth/patch-nvm-bdaddr.py %{buildroot}%{_libexecdir}/gaokun3/patch-nvm-bdaddr.py
+install -Dm755 tools/monitors/gdm-monitor-sync %{buildroot}%{_libexecdir}/gaokun3/gdm-monitor-sync
+install -Dm755 tools/touchscreen-tuner/touchscreen-tune %{buildroot}%{_bindir}/touchscreen-tune
+install -Dm644 tools/touchscreen-tuner/tune.py %{buildroot}%{_datadir}/gaokun3/touchscreen-tuner/tune.py
+install -Dm644 tools/touchscreen-tuner/tune-icon.svg %{buildroot}%{_datadir}/gaokun3/touchscreen-tuner/tune-icon.svg
+install -Dm644 tools/image-assets/usr/local/share/gaokun/monitors.xml %{buildroot}%{_datadir}/gaokun3/monitors.xml
+install -Dm644 tools/image-assets/usr/local/share/gaokun/monitors.xml %{buildroot}%{_sysconfdir}/skel/.config/monitors.xml
+install -Dm644 tools/image-assets/usr/local/share/gaokun/monitors.xml %{buildroot}%{_sysconfdir}/xdg/monitors.xml
+
+install -d %{buildroot}%{_unitdir} %{buildroot}%{_datadir}/applications
+sed 's|/usr/local/bin/patch-nvm-bdaddr.py|%{_libexecdir}/gaokun3/patch-nvm-bdaddr.py|g' \
+    tools/bluetooth/patch-nvm-bdaddr.service > %{buildroot}%{_unitdir}/patch-nvm-bdaddr.service
+sed -e 's|/usr/local/bin/gdm-monitor-sync|%{_libexecdir}/gaokun3/gdm-monitor-sync %{_datadir}/gaokun3/monitors.xml|' \
+    -e 's|/usr/local/share/gaokun/monitors.xml|%{_datadir}/gaokun3/monitors.xml|' \
+    tools/monitors/gdm-monitor-sync.service > %{buildroot}%{_unitdir}/gdm-monitor-sync.service
+sed -e 's|/usr/local/bin/touchscreen-tune|%{_bindir}/touchscreen-tune|' \
+    -e 's|/usr/local/lib/gaokun-touchscreen-tuner|%{_datadir}/gaokun3/touchscreen-tuner|' \
+    tools/touchscreen-tuner/touchscreen-tune.desktop > %{buildroot}%{_datadir}/applications/touchscreen-tune.desktop
+
+install -d %{buildroot}%{_prefix}/lib/systemd/system-preset
+cat > %{buildroot}%{_prefix}/lib/systemd/system-preset/80-gaokun3-platform.preset <<'EOF'
+enable patch-nvm-bdaddr.service
+enable gdm-monitor-sync.service
+EOF
+
+# Both the session manager and PipeWire's ALSA nodes need this UCM tree.
+# The Fedora-owned tree remains the
+# source for all unchanged files, while the Gaokun selector has its own path.
+ucm=%{buildroot}%{_datadir}/gaokun3/ucm2
+install -d "$ucm/conf.d/sc8280xp" "$ucm/Qualcomm/sc8280xp"
+for source in %{_datadir}/alsa/ucm2/*; do
+    case "$(basename "$source")" in conf.d|Qualcomm) continue ;; esac
+    ln -s "$source" "$ucm/$(basename "$source")"
+done
+for source in %{_datadir}/alsa/ucm2/conf.d/*; do
+    case "$(basename "$source")" in sc8280xp) continue ;; esac
+    ln -s "$source" "$ucm/conf.d/$(basename "$source")"
+done
+for source in %{_datadir}/alsa/ucm2/Qualcomm/*; do
+    case "$(basename "$source")" in sc8280xp) continue ;; esac
+    ln -s "$source" "$ucm/Qualcomm/$(basename "$source")"
+done
+for source in %{_datadir}/alsa/ucm2/Qualcomm/sc8280xp/*; do
+    case "$(basename "$source")" in sc8280xp.conf) continue ;; esac
+    ln -s "$source" "$ucm/Qualcomm/sc8280xp/$(basename "$source")"
+done
+ln -s ../../Qualcomm/sc8280xp/sc8280xp.conf "$ucm/conf.d/sc8280xp/sc8280xp.conf"
+install -m644 tools/audio/sc8280xp.conf "$ucm/Qualcomm/sc8280xp/sc8280xp.conf"
+for service in pipewire wireplumber; do
+    install -d %{buildroot}%{_userunitdir}/$service.service.d
+    cat > %{buildroot}%{_userunitdir}/$service.service.d/50-gaokun3-ucm.conf <<'EOF'
+[Service]
+Environment=ALSA_CONFIG_UCM2=%{_datadir}/gaokun3/ucm2
+EOF
+done
+
+%post
+%systemd_post patch-nvm-bdaddr.service gdm-monitor-sync.service
+
+%preun
+%systemd_preun patch-nvm-bdaddr.service gdm-monitor-sync.service
+
+%postun
+%systemd_postun patch-nvm-bdaddr.service gdm-monitor-sync.service
+
+%files
+%{_prefix}/lib/modules-load.d/gaokun3-*.conf
+%{_prefix}/lib/modprobe.d/gaokun3-*.conf
+%config(noreplace) %{_sysconfdir}/modprobe.d/dist-alsa.conf
+%config(noreplace) %{_sysconfdir}/xdg/monitors.xml
+%{_prefix}/lib/dracut/dracut.conf.d/93-gaokun-bluetooth.conf
+%{_prefix}/lib/dracut/dracut.conf.d/94-gaokun-alsa.conf
+%{_libexecdir}/gaokun3
+%{_bindir}/touchscreen-tune
+%{_datadir}/gaokun3
+%{_datadir}/applications/touchscreen-tune.desktop
+%{_unitdir}/patch-nvm-bdaddr.service
+%{_unitdir}/gdm-monitor-sync.service
+%{_prefix}/lib/systemd/system-preset/80-gaokun3-platform.preset
+%dir %{_userunitdir}/wireplumber.service.d
+%{_userunitdir}/wireplumber.service.d/50-gaokun3-ucm.conf
+%dir %{_userunitdir}/pipewire.service.d
+%{_userunitdir}/pipewire.service.d/50-gaokun3-ucm.conf
+%dir %{_sysconfdir}/skel/.config
+%config(noreplace) %{_sysconfdir}/skel/.config/monitors.xml
+
+%changelog
+* Mon Oct 05 2026 Gaokun buildbot - @PLATFORM_VERSION@-3
+- Package Gaokun module, Bluetooth, display, audio and touchscreen integration

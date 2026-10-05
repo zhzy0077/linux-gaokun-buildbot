@@ -19,6 +19,7 @@ install_common_image_assets() {
     "tools/touchscreen-tuner/tune-icon.svg:/usr/local/lib/gaokun-touchscreen-tuner/tune-icon.svg"
     "tools/touchscreen-tuner/touchscreen-tune.desktop:/usr/share/applications/touchscreen-tune.desktop"
     "tools/image-assets/usr/local/share/gaokun/monitors.xml:/usr/local/share/gaokun/monitors.xml"
+    "tools/image-assets/usr/local/share/gaokun/monitors.xml:/etc/xdg/monitors.xml"
   )
   local asset src dest
 
