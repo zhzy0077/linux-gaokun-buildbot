@@ -49,6 +49,8 @@ class InstallerMediaTests(unittest.TestCase):
         self.assertNotIn('user:user',script)
         self.assertIn('bootctl --no-variables',script)
         self.assertIn('/home/installer/.config/gnome-initial-setup-done',script)
+        self.assertIn('vfat defaults,umask=0077',script)
+        self.assertIn('rm -f /boot/efi/loader/random-seed /var/lib/systemd/random-seed',script)
 
     def test_desktop_image_still_supplies_kernel_integration_dependency(self):
         workflow=(ROOT/'.github/workflows/fedora-gaokun3-release.yml').read_text()

@@ -56,8 +56,8 @@ umount "$MNT"
 mount -o subvol=@,compress=zstd:1 "${LOOP}p2" "$MNT"
 rsync -aHAX "$ROOTFS_DIR/" "$MNT/"
 mkdir -p "$MNT/boot/efi" "$MNT/dev" "$MNT/proc" "$MNT/sys" "$MNT/run"
-mount "${LOOP}p1" "$MNT/boot/efi"
-printf 'UUID=%s / btrfs subvol=@,compress=zstd:1 0 0\nUUID=%s /boot/efi vfat defaults 0 2\n' \
+mount -o umask=0077 "${LOOP}p1" "$MNT/boot/efi"
+printf 'UUID=%s / btrfs subvol=@,compress=zstd:1 0 0\nUUID=%s /boot/efi vfat defaults,umask=0077 0 2\n' \
     "$ROOT_UUID" "$EFI_UUID" > "$MNT/etc/fstab"
 mount --rbind /dev "$MNT/dev"
 mount --make-rslave "$MNT/dev"
@@ -86,6 +86,8 @@ systemctl disable sshd.service || true
 systemctl set-default graphical.target
 /usr/libexec/gaokun3/kernel-setup "$KREL" qcom/sc8280xp-huawei-gaokun3-el2.dtb
 bootctl --no-variables --esp-path=/boot/efi install
+# Installation media are cloned; never ship a shared bootloader/OS random seed.
+rm -f /boot/efi/loader/random-seed /var/lib/systemd/random-seed
 printf 'default %s-%s.conf\ntimeout 5\nconsole-mode keep\neditor no\n' "$(</etc/machine-id)" "$KREL" > /boot/efi/loader/loader.conf
 CHROOT
 # Label the offline root, never recurse into bind mounts from the build host.
