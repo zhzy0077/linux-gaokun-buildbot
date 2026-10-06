@@ -13,7 +13,22 @@ flock -n 8 || { echo 'The Gaokun installer is already running.' >&2; exit 1; }
 # Target defaults: configure networking and SSH after installation.
 /usr/bin/python3 /opt/installer/gaokun_installer.py set-policy
 /usr/bin/python3 /opt/installer/gaokun_installer.py preflight
-# liveinst documents LIVECMD as the supported command override. Retain its
-# desktop/Wayland/browser setup but use the DNF backend, selected by defaults.ks.
-export LIVECMD='/usr/bin/anaconda --graphical --profile=fedora-workstation'
-exec /usr/bin/liveinst
+# DNF Anaconda owns its Web UI. liveinst would start an additional viewer.
+# Restore the graphical user environment that pkexec strips, as Fedora's
+# liveinst does, without invoking its Live-payload/browser startup path.
+installer_user=$(id -un "$PKEXEC_UID")
+readarray -t session_environment < <(
+    pkexec --user "$installer_user" env XDG_RUNTIME_DIR="/run/user/$PKEXEC_UID" \
+        systemctl --user show-environment
+)
+for variable in "${session_environment[@]}"; do
+    export "$variable"
+done
+export XDG_RUNTIME_DIR="/run/user/$PKEXEC_UID"
+export HOME="$(getent passwd "$installer_user" | cut -d: -f6)"
+export XDG_CONFIG_HOME="$HOME/.config"
+[[ -n ${DISPLAY:-}${WAYLAND_DISPLAY:-} ]] || {
+    echo 'No graphical desktop session found.' >&2
+    exit 1
+}
+exec /usr/bin/anaconda --graphical --profile=fedora-workstation
