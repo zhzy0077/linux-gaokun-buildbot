@@ -15,6 +15,8 @@ unsigned Gaokun boot payloads.
   rules and EL2 EFI assets. Kernel `%posttrans` calls that helper on installation
   and upgrades. It derives first-install parameters from the target fstab,
   generates one initramfs, and passes that image to `kernel-install`.
+  Platform release 5 preloads QRTR before udev coldplug, preventing an ath11k
+  asynchronous-probe/module-load deadlock that blocks USB-root discovery.
 - `%post --nochroot` validates the target boot files and applies the explicit
   network/SSH choices. It does not partition disks, install systemd-boot or
   regenerate another set of boot files.

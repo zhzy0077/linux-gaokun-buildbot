@@ -5,7 +5,7 @@
 
 Name:           gaokun3-platform
 Version:        @PLATFORM_VERSION@
-Release:        4%{?dist}
+Release:        5%{?dist}
 Summary:        Hardware configuration and desktop tools for Huawei Gaokun3
 # The existing tool sources do not declare a common SPDX license.
 License:        LicenseRef-Unknown
@@ -155,5 +155,6 @@ done
 %config(noreplace) %{_sysconfdir}/skel/.config/monitors.xml
 
 %changelog
-* Tue Oct 06 2026 Gaokun buildbot - @PLATFORM_VERSION@-4
+* Tue Oct 06 2026 Gaokun buildbot - @PLATFORM_VERSION@-5
 - Package Gaokun hardware defaults and shared installation/kernel-update integration
+- Preload QRTR before udev coldplug to prevent ath11k asynchronous probe deadlock

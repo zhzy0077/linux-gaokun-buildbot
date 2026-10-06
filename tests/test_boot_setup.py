@@ -93,6 +93,10 @@ class BootSetupTests(unittest.TestCase):
                 install=next(c for c in commands if c[0]=='kernel-install')
                 self.assertEqual(install[-1],str(root/'boot'/('initramfs-'+KERNEL+'.img')))
 
+    def test_qrtr_is_preloaded_before_udev_coldplug(self):
+        config=(ROOT/'tools/boot/91-gaokun3-boot.conf').read_text()
+        self.assertIn('force_drivers+=" qrtr "',config)
+
     def test_no_delete_before_kernel_install_in_rpm(self):
         spec=(ROOT/'packaging/rpm/kernel-gaokun3.spec.in').read_text().split('%posttrans',1)[1].split('%preun',1)[0]
         self.assertIn('kernel-setup @KREL@',spec)
