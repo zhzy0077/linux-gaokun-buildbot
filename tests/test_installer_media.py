@@ -48,6 +48,7 @@ class InstallerMediaTests(unittest.TestCase):
         self.assertIn('systemctl disable sshd.service',script)
         self.assertNotIn('user:user',script)
         self.assertIn('bootctl --no-variables',script)
+        self.assertIn('/home/installer/.config/gnome-initial-setup-done',script)
 
     def test_desktop_image_still_supplies_kernel_integration_dependency(self):
         workflow=(ROOT/'.github/workflows/fedora-gaokun3-release.yml').read_text()
@@ -56,6 +57,13 @@ class InstallerMediaTests(unittest.TestCase):
         image=(ROOT/'scripts/ci/50_make_image_fedora.sh').read_text()
         self.assertNotIn('kernel-install --entry-token=machine-id remove',image)
         self.assertIn('"$krel" "$image" "/boot/initramfs-${krel}.img"',image)
+
+    def test_rpm_capability_query_uses_name_not_dependency_expression(self):
+        source=(ROOT/'tools/installer/build-media.py').read_text()
+        self.assertIn("'--whatprovides', 'gaokun3-boot-integration'",source)
+        self.assertNotIn("'--whatprovides', 'gaokun3-boot-integration >= 1'",source)
+        workflow=(ROOT/'.github/workflows/gaokun3-installer-image.yml').read_text()
+        self.assertIn('inputs.package_release_tag',workflow)
 
     def test_installer_uses_stock_anaconda_sdubby(self):
         boot=(ROOT/'tools/boot/kernel-setup.py').read_text()

@@ -7,7 +7,7 @@ from pathlib import Path
 import subprocess
 
 
-def download(repository, tag, output):
+def download(repository, tag, output, kernel_tag=None):
     output.mkdir(parents=True, exist_ok=True)
     release = json.loads(subprocess.check_output(
         ['gh', 'api', f'repos/{repository}/releases/tags/{tag}'], text=True))
@@ -31,8 +31,10 @@ def download(repository, tag, output):
 
     sums = {'package-manifest.json': asset('package-manifest.json')}
     data = json.loads((output / 'package-manifest.json').read_text())
-    if data['package_release_tag'] != tag or not data['build_el2']:
+    if data['package_release_tag'] != tag or data['build_el2'] is not True:
         raise ValueError('Expected the requested EL2 package release')
+    if kernel_tag is not None and data['kernel_tag'] != kernel_tag:
+        raise ValueError('Kernel tag differs from the requested image version')
     names = [data['kernels']['el2']['packages'][k] for k in ('kernel', 'kernel_modules')]
     names += [data['packages'][k] for k in ('firmware', 'platform')]
     for name in names:
@@ -45,5 +47,6 @@ if __name__ == '__main__':
     parser.add_argument('--repository', required=True)
     parser.add_argument('--tag', required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--kernel-tag')
     args = parser.parse_args()
-    download(args.repository, args.tag, args.output)
+    download(args.repository, args.tag, args.output, args.kernel_tag)

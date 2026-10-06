@@ -37,7 +37,8 @@ Use the **Build Installer - Fedora Gaokun3 USB image** workflow. It first builds
 a matching RPM release, verifies release asset digests, then composes on a native
 aarch64 runner. The result is an Actions artifact containing `.img.xz`, checksums
 and the complete target RPM inventory. The ordinary desktop-image workflow is
-unchanged.
+unchanged. For image-only retries, `package_release_tag` can reuse the exact
+successful RPM release; its kernel tag must match the requested image version.
 
 For a dedicated local Fedora 44 aarch64 build environment:
 

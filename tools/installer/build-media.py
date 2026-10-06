@@ -140,7 +140,7 @@ def prepare(repo, package_dir, work, rootfs, version):
     # Assert that the selected Gaokun kernel actually belongs to this compose.
     if not (rootfs / 'usr/lib/modules' / kernel).is_dir():
         raise ValueError('Unexpected installer kernel')
-    run('chroot', rootfs, 'rpm', '-q', '--whatprovides', 'gaokun3-boot-integration >= 1')
+    run('chroot', rootfs, 'rpm', '-q', '--whatprovides', 'gaokun3-boot-integration')
     destination = rootfs / 'opt/installer'
     destination.mkdir(parents=True)
     shutil.copytree(offline, destination / 'repo')
@@ -165,7 +165,7 @@ def prepare(repo, package_dir, work, rootfs, version):
         target.chmod(0o755 if name in ('gaokun-install', 'gaokun-install-backend') else 0o644)
     defaults = rootfs / 'usr/share/anaconda/interactive-defaults.ks'
     defaults.parent.mkdir(parents=True, exist_ok=True)
-    defaults.write_text(render_defaults(text, (repo / 'tools/boot/platform-cmdline').read_text()))
+    defaults.write_text(render_defaults(text, (rootfs / 'usr/share/gaokun3/platform-cmdline').read_text()))
     run('ksvalidator', '-v', 'F44', defaults)
     # Hide the stock live-copy launcher; this medium uses Anaconda's DNF payload.
     overrides = rootfs / 'usr/local/share/applications'

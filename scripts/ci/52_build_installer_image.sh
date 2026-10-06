@@ -73,6 +73,7 @@ printf 'installer ALL=(ALL) NOPASSWD:ALL\n' > /etc/sudoers.d/gaokun-installer-li
 chmod 0440 /etc/sudoers.d/gaokun-installer-live
 printf '[daemon]\nAutomaticLoginEnable=true\nAutomaticLogin=installer\n' > /etc/gdm/custom.conf
 cp /usr/share/applications/gaokun-install.desktop /home/installer/.config/autostart/
+printf 'yes\n' > /home/installer/.config/gnome-initial-setup-done
 chown -R installer:installer /home/installer
 # Installer identity/secrets are never copied by the DNF target payload.
 rm -f /etc/machine-id /var/lib/dbus/machine-id /etc/ssh/ssh_host_*
