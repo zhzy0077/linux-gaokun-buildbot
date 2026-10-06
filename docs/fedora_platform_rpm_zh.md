@@ -18,6 +18,8 @@ GPU 固件由内核 RPM 的 dracut 配置显式收集。
 
 | 内容 | 安装位置 |
 | --- | --- |
+| 内核安装/升级 | `/usr/libexec/gaokun3/kernel-setup`、`/usr/share/gaokun3/platform-cmdline` |
+| EL2 启动载荷 | `/usr/share/gaokun3/el2/`，由内核安装 helper 部署到 ESP |
 | 模块加载和依赖 | `/usr/lib/modules-load.d/gaokun3-*.conf`、`/usr/lib/modprobe.d/gaokun3-*.conf` |
 | 蓝牙和 GDM 工具 | `/usr/libexec/gaokun3/`，配套 systemd 服务 |
 | 显示默认值 | `/usr/share/gaokun3/monitors.xml`、`/etc/xdg/monitors.xml`、`/etc/skel/.config/monitors.xml` |
@@ -46,6 +48,12 @@ systemctl --user restart pipewire wireplumber pipewire-pulse
 
 手动使用 `alsaucm` 时也需要设置同一环境变量。
 工具来源与授权信息见项目 README；平台 spec 使用 `LicenseRef-Unknown` 标记待统一的工具授权。
+
+内核 RPM 的 `%posttrans` 调用平台 helper：首次安装从目标 `fstab` 和已打开设备的
+LUKS 父链生成启动参数，后续更新保留现有 `/etc/kernel/cmdline`。helper 生成一次 initramfs，
+将其显式传给 `kernel-install`，并按版本选择 DTB；EL2 同时部署必要 EFI 载荷。
+未挂载目标文件系统的 rootfs 构建阶段会跳过，镜像构建器在挂载后显式完成这一步。
+首次 systemd-boot 安装由 Anaconda 或镜像构建器负责。
 
 ## 构建
 

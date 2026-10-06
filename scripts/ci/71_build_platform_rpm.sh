@@ -19,7 +19,7 @@ mkdir -p "$RPM_TOPDIR"/{BUILD,BUILDROOT,RPMS,SOURCES,SPECS,SRPMS}
 
 source_name=gaokun3-platform.tar.gz
 tar -C "$GAOKUN_DIR" --exclude=__pycache__ -czf "$RPM_TOPDIR/SOURCES/$source_name" \
-  tools/audio tools/bluetooth tools/monitors tools/touchscreen-tuner tools/image-assets
+  tools/audio tools/bluetooth tools/monitors tools/touchscreen-tuner tools/image-assets tools/boot tools/el2
 sed -e "s|@PLATFORM_VERSION@|$PLATFORM_RPM_VERSION|g" \
     -e "s|@SOURCE_NAME@|$source_name|g" \
     "$GAOKUN_DIR/packaging/rpm/gaokun3-platform.spec.in" \

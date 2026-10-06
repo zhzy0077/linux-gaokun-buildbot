@@ -4,7 +4,7 @@
 
 Name:           @PKG_NAME@
 Version:        @KREL_VERSION@
-Release:        6%{?dist}
+Release:        7%{?dist}
 Summary:        Development files for the gaokun3 kernel
 License:        GPL-2.0-only
 ExclusiveArch:  aarch64
@@ -31,7 +31,7 @@ cp -a usr %{buildroot}/
 /usr/lib/modules/@KREL@/source
 
 %changelog
-* Mon Oct 05 2026 Gaokun buildbot - @KREL_VERSION@-6
+* Tue Oct 06 2026 Gaokun buildbot - @KREL_VERSION@-7
 - Package matching aarch64 kernel development files for Gaokun
 
 * Sat Mar 28 2026 cool <bilibili@att.net> - @KREL_VERSION@-1

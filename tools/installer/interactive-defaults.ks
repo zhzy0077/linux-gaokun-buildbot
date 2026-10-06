@@ -1,10 +1,8 @@
 # Loaded as interactive defaults, without --kickstart or --liveinst.
 graphical
-url --url=https://dl.fedoraproject.org/pub/fedora/linux/releases/44/Everything/aarch64/os/
-# Use a distinct ID: an explicit URL source disables Fedora's default 'updates' ID.
-repo --name=gaokun-fedora44-updates --metalink=https://mirrors.fedoraproject.org/metalink?repo=updates-released-f44&arch=aarch64
-repo --name=gaokun3 --baseurl=file:///opt/installer/repo
-bootloader --disabled
+url --url=file:///opt/installer/repo
+# Filled by the media builder from the RPM-owned platform-cmdline file.
+bootloader --sdboot --append="@PLATFORM_CMDLINE@"
 rootpw --lock
 firstboot --enable
 services --enabled=gdm,NetworkManager --disabled=sshd
@@ -13,15 +11,15 @@ services --enabled=gdm,NetworkManager --disabled=sshd
 /usr/bin/python3 /opt/installer/gaokun_installer.py preflight
 %end
 
-%include /run/gaokun-installer/storage.ks
-
 %packages
 @^workstation-product-environment
-kernel-gaokun3
-kernel-modules-gaokun3
+kernel-gaokun3-el2
+kernel-modules-gaokun3-el2
 linux-firmware-gaokun3
 gaokun3-platform
 systemd-boot-unsigned
+sdubby
+efibootmgr
 dracut
 cryptsetup
 btrfs-progs
@@ -46,10 +44,6 @@ langpacks-zh_CN
 -qcom-firmware
 %end
 
-%pre-install --erroronfail --log=/tmp/gaokun-pre-install.log
-/usr/bin/python3 /opt/installer/gaokun_installer.py prepare-target
-%end
-
 %post --nochroot --erroronfail --log=/tmp/gaokun-post.log
-/usr/bin/python3 /opt/installer/gaokun_installer.py finalize
+/usr/bin/python3 /opt/installer/gaokun_installer.py validate
 %end

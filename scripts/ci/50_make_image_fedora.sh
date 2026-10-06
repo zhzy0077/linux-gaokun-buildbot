@@ -154,10 +154,9 @@ EOF
   printf '%s\n' "$cmdline" > "$conf_root/cmdline"
   printf 'qcom/%s\n' "$dtb" > "$conf_root/devicetree"
 
-  kernel-install --entry-token=machine-id remove "$krel" || true
   KERNEL_INSTALL_CONF_ROOT="$conf_root" \
     kernel-install --verbose --make-entry-directory=yes --entry-token=machine-id add \
-    "$krel" "$image"
+    "$krel" "$image" "/boot/initramfs-${krel}.img"
   rm -rf "$conf_root"
 }
 

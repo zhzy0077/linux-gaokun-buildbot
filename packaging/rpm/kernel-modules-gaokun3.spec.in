@@ -3,7 +3,7 @@
 
 Name:           @PKG_NAME@
 Version:        @KREL_VERSION@
-Release:        6%{?dist}
+Release:        7%{?dist}
 Summary:        Kernel modules for the gaokun3 kernel
 License:        GPL-2.0-only
 ExclusiveArch:  aarch64
@@ -33,7 +33,7 @@ cp -a usr %{buildroot}/
 /usr/lib/modules/@KREL@
 
 %changelog
-* Mon Oct 05 2026 Gaokun buildbot - @KREL_VERSION@-6
+* Tue Oct 06 2026 Gaokun buildbot - @KREL_VERSION@-7
 - Package matching Gaokun modules with bonded-DSI, touchscreen and firewall support
 
 * Sat Mar 28 2026 cool <bilibili@att.net> - @KREL_VERSION@-1

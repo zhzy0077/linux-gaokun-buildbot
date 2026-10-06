@@ -1,0 +1,4 @@
+#!/bin/sh
+# Keep boot space for the selected kernel and deliberate fallbacks.
+# Do not remove existing rescue entries as a side effect of package installation.
+exit 0
