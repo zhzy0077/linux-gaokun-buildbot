@@ -4,15 +4,14 @@ set -euo pipefail
     echo 'Start the installer from the desktop launcher.' >&2
     exit 1
 }
-for option in "$@"; do
-    case "$option" in --copy-network|--enable-ssh) ;; *) echo 'Unknown installer option' >&2; exit 1 ;; esac
-done
+[[ $# == 0 ]] || { echo 'The installer launcher takes no options.' >&2; exit 1; }
 install -d -m 0700 /run/gaokun-installer
 # Keep preflight state stable if the desktop entry is clicked twice.
 # liveinst uses descriptor 9 for its own lock, so retain ours on descriptor 8.
 exec 8>/run/gaokun-installer/launcher.lock
 flock -n 8 || { echo 'The Gaokun installer is already running.' >&2; exit 1; }
-/usr/bin/python3 /opt/installer/gaokun_installer.py set-policy "$@"
+# Target defaults: configure networking and SSH after installation.
+/usr/bin/python3 /opt/installer/gaokun_installer.py set-policy
 /usr/bin/python3 /opt/installer/gaokun_installer.py preflight
 # liveinst documents LIVECMD as the supported command override. Retain its
 # desktop/Wayland/browser setup but use the DNF backend, selected by defaults.ks.

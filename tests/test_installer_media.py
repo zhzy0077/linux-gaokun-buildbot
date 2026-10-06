@@ -27,6 +27,19 @@ class InstallerMediaTests(unittest.TestCase):
         self.assertIn('--append="'+hardware.strip()+'"',rendered)
         with self.assertRaises(ValueError):media.render_defaults(template,'root="bad"')
 
+    def test_autostart_and_desktop_open_anaconda_without_extra_dialogs(self):
+        launcher=(ROOT/'tools/installer/gaokun-install').read_text()
+        backend=(ROOT/'tools/installer/gaokun-install-backend').read_text()
+        image=(ROOT/'scripts/ci/52_build_installer_image.sh').read_text()
+        self.assertNotIn('zenity',launcher)
+        self.assertIn('exec pkexec /usr/local/libexec/gaokun-install-backend',launcher)
+        self.assertIn('/opt/installer/gaokun_installer.py preflight',backend)
+        self.assertIn('flock -n 8',backend)
+        self.assertIn('exec /usr/bin/liveinst',backend)
+        self.assertNotIn('--copy-network',backend)
+        self.assertNotIn('--enable-ssh',backend)
+        self.assertIn('cp /usr/share/applications/gaokun-install.desktop /home/installer/.config/autostart/',image)
+
     def test_live_privilege_is_only_for_active_session_launcher(self):
         tree=ET.parse(ROOT/'tools/installer/org.gaokun.installer.policy')
         action=tree.getroot().find('action')

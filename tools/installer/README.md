@@ -17,8 +17,8 @@ unsigned Gaokun boot payloads.
   generates one initramfs, and passes that image to `kernel-install`.
   Platform release 5 preloads QRTR before udev coldplug, preventing an ath11k
   asynchronous-probe/module-load deadlock that blocks USB-root discovery.
-- `%post --nochroot` validates the target boot files and applies the explicit
-  network/SSH choices. It does not partition disks, install systemd-boot or
+- `%post --nochroot` validates the target boot files and applies the target
+  network/SSH defaults. It does not partition disks, install systemd-boot or
   regenerate another set of boot files.
 - Fedora supplies unmodified Anaconda and sdubby. The media is designed for a
   normal single-Linux installation alongside Windows; it does not add a custom
@@ -66,10 +66,12 @@ checks the target transaction using only the local repository. Installer-only
 packages and policies stay in the USB root; they are not target packages.
 
 The USB uses a password-locked `installer` account with automatic GNOME login.
-Its local administrator/launcher policy is confined to the media. SSH is disabled.
-The target account is created through GNOME Initial Setup. Retaining the live
-NetworkManager connections (including saved Wi-Fi credentials) and enabling target
-SSH are separate opt-in choices in the launcher.
+Anaconda Web UI opens automatically; the desktop icon uses the same launcher,
+with background media validation and a single-instance lock. There are no custom
+pre-install dialogs. Its local administrator policy is confined to the media.
+SSH is disabled by default. The target account is created through GNOME Initial
+Setup; configure its Wi-Fi and SSH there or after login. Live NetworkManager
+profiles are not inherited and target SSH remains disabled.
 
 ## Validation
 

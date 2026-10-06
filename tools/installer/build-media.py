@@ -134,7 +134,7 @@ def prepare(repo, package_dir, work, rootfs, version):
         '--setopt=cachedir=' + str(work / 'offline-cache'),
         'install', '--downloadonly', *packages)
     # Installer-only packages never enter the target package list.
-    live = ['anaconda-live', 'anaconda-webui', 'anaconda-install-env-deps', 'zenity',
+    live = ['anaconda-live', 'anaconda-webui', 'anaconda-install-env-deps',
             'cockpit-storaged', 'udisks2-btrfs', 'firefox', 'polkit']
     run(*common, '--installroot=' + str(rootfs), *source_options, 'install', *packages, *live)
     # Assert that the selected Gaokun kernel actually belongs to this compose.
