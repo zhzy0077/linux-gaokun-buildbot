@@ -10,6 +10,8 @@ Fedora GNOME 安装使用 `kernel-gaokun3`、`kernel-modules-gaokun3`、
 Gaokun 板级补丁负责 GPIO174 的触屏 SPI 模式和原生 ARM64 的 CPU 产品名输出；
 内核配置包含 FedoraWorkstation 防火墙所需的 NetBIOS conntrack helper。
 GPU 固件由内核 RPM 的 dracut 配置显式收集。
+内核 RPM Release 7 增加默认关闭探测的 QSEECOM fTPM 验证模块，保留命令白名单；
+适用范围与验证状态见 [TPM 支持记录](tpm_qsee_zh.md)。
 
 [Anaconda 安装流程](../tools/installer/README.md)负责 LUKS、Btrfs、共享 ESP、
 目标 UUID 和 systemd-boot。GPIO 的实现与验证方法见[触屏说明](touchscreen_spi_mode_zh.md)。

@@ -113,6 +113,8 @@ int main(void) {
         for name in ('himax-spi-core.c', 'hx-algo.c', 'hx-algo.h'):
             self.assertEqual((self.tree / 'drivers/input/touchscreen' / name).read_bytes(),
                              (ROOT / 'drivers/touchscreen-hx83121a' / name).read_bytes())
+        self.assertEqual((self.tree / 'drivers/char/tpm/tpm_qcom_qsee.c').read_bytes(),
+                         (ROOT / 'drivers/tpm-qcom-qsee/tpm_qcom_qsee.c').read_bytes())
         pinctrl = (self.tree / 'drivers/pinctrl/qcom/pinctrl-sc8280xp.c').read_text()
         self.assertNotRegex(pinctrl, r'\{\s*175,\s*237\s*\}')
         self.assertRegex(pinctrl, r'\{\s*174,\s*222\s*\}')

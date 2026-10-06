@@ -82,6 +82,8 @@
 
 触摸屏模式选择修复与验证：[GPIO 174 说明](touchscreen_spi_mode_zh.md)。
 
+QSEECOM fTPM 验证与 EL2 固定内存共享修正：[TPM 支持记录](tpm_qsee_zh.md)。
+
 设备硬件工作情况可参考 [right-0903/linux-gaokun 的 `## Feature Support`](https://github.com/right-0903/linux-gaokun?tab=readme-ov-file#feature-support)。
 
 ## 参考

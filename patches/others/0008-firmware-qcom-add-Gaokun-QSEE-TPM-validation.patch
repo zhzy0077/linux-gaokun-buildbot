@@ -1,0 +1,642 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Gaokun buildbot <gaokun-buildbot@localhost>
+Date: Tue, 6 Oct 2026 00:00:00 +0000
+Subject: [PATCH] firmware: qcom: add opt-in Gaokun QSEE fTPM validation
+
+Based on Xilin Wu's QSEE TPM transport and SCM type query:
+https://github.com/strongtz/linux-radxa-qcom/commit/9c3041295f115df392bf7675bd24685d152f18d4
+https://github.com/strongtz/linux-radxa-qcom/commit/e66d8394348465af2c8948457cd62f8cb5b0d4da
+
+Gaokun EL1/EL2 A/B tests show that the firmware-owned control region
+requires HLOS sharing even when new kernel buffers use SELF_OWNER.
+Keep the generic QSEECOM allocation policy intact and register only
+this fixed region through the HLOS SCM bridge interface.
+
+Limit this bring-up stage to non-provisioning commands and explicit
+allow_probe=1. Validate firmware addresses and protocol bounds before
+accessing shared buffers. Production key-management policy remains a
+separate step after cold-boot and suspend/resume verification.
+
+---
+diff --git a/drivers/firmware/qcom/qcom_scm.c b/drivers/firmware/qcom/qcom_scm.c
+--- a/drivers/firmware/qcom/qcom_scm.c
++++ b/drivers/firmware/qcom/qcom_scm.c
+@@ -2065,6 +2065,41 @@
+ 
+ 	return 0;
+ }
++
++/**
++ * qcom_scm_query_tpm_type() - Query the TPM backend type from TrustZone.
++ * @type: Returned TPM type.
++ *
++ * Invoke the Qualcomm SIP TPM info call. Success or failure of the secure call
++ * is returned by qcom_scm_call(); the TPM type is returned in result[0].
++ *
++ * Return: Zero on success, nonzero on failure.
++ */
++int qcom_scm_query_tpm_type(u64 *type)
++{
++	struct qcom_scm_desc desc = {
++		.owner = ARM_SMCCC_OWNER_SIP,
++		.svc = QCOM_SCM_SVC_TPM_INFO,
++		.cmd = QCOM_SCM_TPM_INFO_QUERY_TYPE,
++		.arginfo = QCOM_SCM_ARGS(0),
++	};
++	struct qcom_scm_res res = {};
++	int ret;
++
++	if (!type)
++		return -EINVAL;
++
++	if (!__scm)
++		return -EPROBE_DEFER;
++
++	ret = qcom_scm_call(__scm->dev, &desc, &res);
++	if (ret)
++		return ret;
++
++	*type = res.result[0];
++	return 0;
++}
++EXPORT_SYMBOL_GPL(qcom_scm_query_tpm_type);
+ 
+ #ifdef CONFIG_QCOM_QSEECOM
+ 
+diff --git a/drivers/firmware/qcom/qcom_scm.h b/drivers/firmware/qcom/qcom_scm.h
+--- a/drivers/firmware/qcom/qcom_scm.h
++++ b/drivers/firmware/qcom/qcom_scm.h
+@@ -141,6 +141,9 @@
+ #define QCOM_SCM_SVC_HDCP		0x11
+ #define QCOM_SCM_HDCP_INVOKE		0x01
+ 
++#define QCOM_SCM_SVC_TPM_INFO			0x20
++#define QCOM_SCM_TPM_INFO_QUERY_TYPE		0x01
++
+ #define QCOM_SCM_SVC_LMH			0x13
+ #define QCOM_SCM_LMH_LIMIT_PROFILE_CHANGE	0x01
+ #define QCOM_SCM_LMH_LIMIT_DCVSH		0x10
+diff --git a/include/linux/firmware/qcom/qcom_scm.h b/include/linux/firmware/qcom/qcom_scm.h
+--- a/include/linux/firmware/qcom/qcom_scm.h
++++ b/include/linux/firmware/qcom/qcom_scm.h
+@@ -167,6 +167,8 @@
+ 			       u64 ns_vmids, u64 *handle);
+ int qcom_scm_shm_bridge_delete(u64 handle);
+ 
++int qcom_scm_query_tpm_type(u64 *type);
++
+ #ifdef CONFIG_QCOM_QSEECOM
+ 
+ int qcom_scm_qseecom_app_get_id(const char *app_name, u32 *app_id);
+diff --git a/drivers/firmware/qcom/qcom_qseecom.c b/drivers/firmware/qcom/qcom_qseecom.c
+--- a/drivers/firmware/qcom/qcom_qseecom.c
++++ b/drivers/firmware/qcom/qcom_qseecom.c
+@@ -85,6 +85,7 @@
+  */
+ static const struct qseecom_app_desc qcom_qseecom_apps[] = {
+ 	{ "qcom.tz.uefisecapp", "uefisecapp" },
++	{ "qcom.tz.tpm", "tpm" },
+ };
+ 
+ static int qcom_qseecom_probe(struct platform_device *qseecom_dev)
+diff --git a/drivers/char/tpm/Kconfig b/drivers/char/tpm/Kconfig
+--- a/drivers/char/tpm/Kconfig
++++ b/drivers/char/tpm/Kconfig
+@@ -244,6 +244,19 @@
+ 	help
+ 	  This driver proxies for firmware TPM running in TEE.
+ 
++config TCG_QCOM_TPM_QSEE
++	tristate "Gaokun3 Qualcomm QSEE fTPM validation"
++	depends on QCOM_QSEECOM && OF && !TCG_TPM2_HMAC
++	help
++	  Opt-in transport for the firmware-preloaded qcom.tz.tpm application
++	  on Huawei Gaokun3. The fixed firmware control area uses HLOS sharing
++	  even when the kernel's dynamic QSEECOM buffers use SELF_OWNER.
++
++	  This validation stage supports self-test, capabilities, PCR reads
++	  and random generation only. Provisioning, sealing, NV writes and
++	  TPM startup/shutdown are rejected. Load with allow_probe=1 after
++	  ensuring provisioning services are disabled during the test.
++
+ config TCG_SVSM
+ 	tristate "SNP SVSM vTPM interface"
+ 	depends on AMD_MEM_ENCRYPT
+diff --git a/drivers/char/tpm/Makefile b/drivers/char/tpm/Makefile
+--- a/drivers/char/tpm/Makefile
++++ b/drivers/char/tpm/Makefile
+@@ -45,5 +45,6 @@
+ obj-$(CONFIG_TCG_ARM_CRB_FFA) += tpm_crb_ffa.o
+ obj-$(CONFIG_TCG_VTPM_PROXY) += tpm_vtpm_proxy.o
+ obj-$(CONFIG_TCG_FTPM_TEE) += tpm_ftpm_tee.o
++obj-$(CONFIG_TCG_QCOM_TPM_QSEE) += tpm_qcom_qsee.o
+ obj-$(CONFIG_TCG_SVSM) += tpm_svsm.o
+ obj-$(CONFIG_TCG_LOONGSON) += tpm_loongson.o
+diff --git a/drivers/char/tpm/tpm_qcom_qsee.c b/drivers/char/tpm/tpm_qcom_qsee.c
+new file mode 100644
+--- /dev/null
++++ b/drivers/char/tpm/tpm_qcom_qsee.c
+@@ -0,0 +1,501 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * Qualcomm QSEE TPM transport driver.
++ * Based on Xilin Wu's driver (strongtz/linux-radxa-qcom,
++ * commit 9c3041295f115df392bf7675bd24685d152f18d4).
++ * Gaokun support currently permits non-provisioning validation only.
++ */
++
++#include <linux/auxiliary_bus.h>
++#include <linux/byteorder/generic.h>
++#include <linux/device.h>
++#include <linux/err.h>
++#include <linux/io.h>
++#include <linux/kernel.h>
++#include <linux/module.h>
++#include <linux/mutex.h>
++#include <linux/mm.h>
++#include <linux/of.h>
++#include <linux/overflow.h>
++#include <linux/ioport.h>
++#include <linux/sizes.h>
++#include <linux/slab.h>
++#include <linux/types.h>
++
++#include <linux/firmware/qcom/qcom_qseecom.h>
++#include <linux/firmware/qcom/qcom_scm.h>
++#include <linux/firmware/qcom/qcom_tzmem.h>
++
++#include "tpm.h"
++
++#define QCOM_TPM_QSEE_CONTROL_AREA_SIZE	(SZ_4K * 3)
++#define QCOM_TPM_QSEE_COMMAND_SIZE		TPM_BUFSIZE
++#define QCOM_TPM_QSEE_RESPONSE_SIZE		TPM_BUFSIZE
++#define QCOM_TPM_QSEE_MAX_TA_DATA_SIZE	SZ_1K
++#define QCOM_TPM_QSEE_NUM_VM_SHIFT	9
++
++#define QCOM_TPM_TYPE_DTPM		0x6454504d
++#define QCOM_TPM_TYPE_FTPM		0x6654504d
++#define QCOM_TPM_TYPE_STPM		0x7354504d
++
++#define QCOM_TPM_QSEE_CMD_QUERY_INFO_2	(0x4000 | 18)
++#define QCOM_TPM_QSEE_CMD_SEND_COMMAND	(0x4000 | 8)
++
++/* Opt-in while extended validation and provisioning policy remain pending. */
++static bool allow_probe;
++module_param(allow_probe, bool, 0400);
++MODULE_PARM_DESC(allow_probe, "Enable Gaokun3 TPM capability/PCR/random validation (no provisioning)");
++
++static bool qcom_tpm_qsee_command_allowed(u32 command)
++{
++	switch (command) {
++	case TPM2_CC_SELF_TEST:
++	case TPM2_CC_GET_CAPABILITY:
++	case TPM2_CC_GET_RANDOM:
++	case TPM2_CC_PCR_READ:
++	case 0x017c: /* TPM2_GetTestResult */
++		return true;
++	default:
++		return false;
++	}
++}
++
++struct qcom_tpm_qsee_region {
++	resource_size_t start;
++	resource_size_t end;
++	bool reserved;
++};
++
++static int qcom_tpm_qsee_reserved(struct resource *res, void *data)
++{
++	struct qcom_tpm_qsee_region *area = data;
++
++	/*
++	 * arm64 request_standard_resources() exposes memblock NOMAP ranges
++	 * as plain IORESOURCE_MEM with IORES_DESC_NONE. The walking API
++	 * copies flags/descriptor/bounds, but deliberately not the name.
++	 */
++	if (res->flags == IORESOURCE_MEM && res->desc == IORES_DESC_NONE &&
++	    res->start <= area->start && res->end >= area->end)
++		area->reserved = true;
++	return 0;
++}
++
++struct qcom_tpm_qsee_control_area {
++	__le32 request;
++	__le32 status;
++	__le32 cancel;
++	__le32 start;
++	__le64 interrupt_control;
++	__le32 command_size;
++	__le64 command;
++	__le32 response_size;
++	__le64 response;
++} __packed;
++
++#define QCOM_TPM_QSEE_CONTROL_AREA_CMD_OFF	\
++	(sizeof(struct qcom_tpm_qsee_control_area))
++#define QCOM_TPM_QSEE_CA_STATUS		\
++	offsetof(struct qcom_tpm_qsee_control_area, status)
++#define QCOM_TPM_QSEE_CA_START		\
++	offsetof(struct qcom_tpm_qsee_control_area, start)
++#define QCOM_TPM_QSEE_CA_COMMAND_SIZE	\
++	offsetof(struct qcom_tpm_qsee_control_area, command_size)
++#define QCOM_TPM_QSEE_CA_COMMAND	\
++	offsetof(struct qcom_tpm_qsee_control_area, command)
++#define QCOM_TPM_QSEE_CA_RESPONSE_SIZE	\
++	offsetof(struct qcom_tpm_qsee_control_area, response_size)
++#define QCOM_TPM_QSEE_CA_RESPONSE	\
++	offsetof(struct qcom_tpm_qsee_control_area, response)
++
++struct qcom_tpm_qsee_query_req {
++	__le32 command_id;
++} __packed;
++
++struct qcom_tpm_qsee_query_rsp {
++	__le32 nv_store_size;
++	__le64 control_area;
++} __packed;
++
++struct qcom_tpm_qsee_send_req {
++	__le32 command_id;
++	__le32 input_size;
++	u8 input[QCOM_TPM_QSEE_MAX_TA_DATA_SIZE];
++} __packed;
++
++struct qcom_tpm_qsee_send_rsp {
++	__le32 output_size;
++	u8 output[QCOM_TPM_QSEE_MAX_TA_DATA_SIZE];
++} __packed;
++
++/**
++ * struct qcom_tpm_qsee - Qualcomm QSEE TPM driver state.
++ * @client: QSEECOM client for qcom.tz.tpm.
++ * @mempool: TZ memory pool for QSEECOM request/response buffers.
++ * @chip: TPM chip registered with the TPM core.
++ * @control_area: Mapped TPM control area.
++ * @control_area_phys: Physical address of the TPM control area.
++ * @control_area_shm_bridge: SHM bridge handle for the TPM control area.
++ * @lock: Serializes access to the TPM control area and TA command path.
++ */
++struct qcom_tpm_qsee {
++	struct qseecom_client *client;
++	struct qcom_tzmem_pool *mempool;
++	struct tpm_chip *chip;
++	void __iomem *control_area;
++	phys_addr_t control_area_phys;
++	u64 control_area_shm_bridge;
++	/* Serializes access to the TPM control area and TA command path. */
++	struct mutex lock;
++};
++
++static const char *qcom_tpm_type_name(u64 type)
++{
++	switch (type) {
++	case QCOM_TPM_TYPE_DTPM:
++		return "dTPM";
++	case QCOM_TPM_TYPE_FTPM:
++		return "fTPM";
++	case QCOM_TPM_TYPE_STPM:
++		return "sTPM";
++	default:
++		return "unknown";
++	}
++}
++
++static int qcom_tpm_qsee_app_send(struct qcom_tpm_qsee *qtpm, const void *req,
++				  size_t req_size, void *rsp, size_t rsp_size)
++{
++	size_t rsp_off;
++	size_t cmd_buf_size;
++	void *cmd_buf;
++	int ret;
++
++	rsp_off = ALIGN(req_size, 8);
++	cmd_buf_size = rsp_off + rsp_size;
++
++	cmd_buf = qcom_tzmem_alloc(qtpm->mempool, cmd_buf_size, GFP_KERNEL);
++	if (!cmd_buf)
++		return -ENOMEM;
++
++	memset(cmd_buf, 0, cmd_buf_size);
++	memcpy(cmd_buf, req, req_size);
++
++	ret = qcom_qseecom_app_send(qtpm->client, cmd_buf, req_size,
++				    cmd_buf + rsp_off, rsp_size);
++	if (!ret && rsp_size)
++		memcpy(rsp, cmd_buf + rsp_off, rsp_size);
++
++	qcom_tzmem_free(cmd_buf);
++	return ret;
++}
++
++static int qcom_tpm_qsee_query_info(struct qcom_tpm_qsee *qtpm)
++{
++	struct qcom_tpm_qsee_query_req req = {
++		.command_id = cpu_to_le32(QCOM_TPM_QSEE_CMD_QUERY_INFO_2),
++	};
++	struct qcom_tpm_qsee_query_rsp rsp = {};
++	u64 control_area, end;
++	struct qcom_tpm_qsee_region region;
++	int ret;
++
++	ret = qcom_tpm_qsee_app_send(qtpm, &req, sizeof(req), &rsp, sizeof(rsp));
++	if (ret)
++		return ret;
++
++	control_area = le64_to_cpu(rsp.control_area);
++	if (!control_area || !IS_ALIGNED(control_area, SZ_4K) ||
++	    check_add_overflow(control_area,
++			       (u64)QCOM_TPM_QSEE_CONTROL_AREA_SIZE - 1, &end) ||
++	    (phys_addr_t)end != end)
++		return -EINVAL;
++
++	/* Accept only a firmware-reserved region, never normal system RAM. */
++	if (region_intersects(control_area, QCOM_TPM_QSEE_CONTROL_AREA_SIZE,
++			      IORESOURCE_SYSTEM_RAM, IORES_DESC_NONE) != REGION_DISJOINT)
++		return -EINVAL;
++	region.start = control_area;
++	region.end = end;
++	region.reserved = false;
++	ret = walk_iomem_res_desc(IORES_DESC_NONE, IORESOURCE_MEM,
++				 control_area, end, &region, qcom_tpm_qsee_reserved);
++	if (ret || !region.reserved)
++		return -EINVAL;
++
++	qtpm->control_area_phys = control_area;
++	dev_info(&qtpm->client->aux_dev.dev,
++		 "Gaokun fTPM validation: control area %pa, NV store %u bytes\n",
++		 &qtpm->control_area_phys, le32_to_cpu(rsp.nv_store_size));
++
++	return 0;
++}
++
++static int qcom_tpm_qsee_send_ta_command(struct qcom_tpm_qsee *qtpm,
++					 u32 command_id, u32 input_size,
++					 const void *input)
++{
++	struct qcom_tpm_qsee_send_req *req;
++	size_t req_size = sizeof(struct qcom_tpm_qsee_send_req);
++	size_t rsp_size = sizeof(struct qcom_tpm_qsee_send_rsp);
++	size_t rsp_off = ALIGN(req_size, 8);
++	size_t cmd_buf_size = rsp_off + rsp_size;
++	void *cmd_buf;
++	int ret;
++
++	if (input_size > QCOM_TPM_QSEE_MAX_TA_DATA_SIZE)
++		return -EINVAL;
++
++	cmd_buf = qcom_tzmem_alloc(qtpm->mempool, cmd_buf_size, GFP_KERNEL);
++	if (!cmd_buf)
++		return -ENOMEM;
++
++	memset(cmd_buf, 0, cmd_buf_size);
++
++	req = cmd_buf;
++	req->command_id = cpu_to_le32(command_id);
++	req->input_size = cpu_to_le32(input_size);
++	if (input_size && input)
++		memcpy(req->input, input, input_size);
++
++	ret = qcom_qseecom_app_send(qtpm->client, cmd_buf, req_size,
++				    cmd_buf + rsp_off, rsp_size);
++
++	qcom_tzmem_free(cmd_buf);
++	return ret;
++}
++
++static void qcom_tpm_qsee_delete_control_area_bridge(void *data)
++{
++	struct qcom_tpm_qsee *qtpm = data;
++
++	/* This action is registered only after successful bridge creation. */
++	qcom_scm_shm_bridge_delete(qtpm->control_area_shm_bridge);
++}
++
++static int qcom_tpm_qsee_create_control_area_bridge(struct qcom_tpm_qsee *qtpm)
++{
++	struct device *dev = &qtpm->client->aux_dev.dev;
++	int ret;
++
++	/*
++	 * Firmware allocated this fixed area before the EL2 handover. Its TPM
++	 * access contract remains HLOS-facing. The allocator's SELF_OWNER
++	 * policy is appropriate for new QSEECOM buffers, not this region.
++	 * Keep qcom_tzmem pool allocations unchanged in both EL1 and EL2.
++	 */
++	ret = qcom_scm_shm_bridge_create(
++		qtpm->control_area_phys | QCOM_SCM_PERM_RW,
++		qtpm->control_area_phys | QCOM_SCM_PERM_RW,
++		QCOM_TPM_QSEE_CONTROL_AREA_SIZE | (1ULL << QCOM_TPM_QSEE_NUM_VM_SHIFT),
++		QCOM_SCM_VMID_HLOS, &qtpm->control_area_shm_bridge);
++	if (ret)
++		return ret;
++
++	return devm_add_action_or_reset(dev,
++					qcom_tpm_qsee_delete_control_area_bridge,
++					qtpm);
++}
++
++static int qcom_tpm_qsee_send(struct tpm_chip *chip, u8 *buf, size_t bufsiz,
++			      size_t cmd_len)
++{
++	struct qcom_tpm_qsee *qtpm = dev_get_drvdata(chip->dev.parent);
++	void __iomem *command;
++	void __iomem *response;
++	phys_addr_t command_phys;
++	phys_addr_t response_phys;
++	__le64 command_le;
++	__le64 response_le;
++	struct tpm_header header;
++	u32 response_len;
++	int ret;
++
++	if (cmd_len > QCOM_TPM_QSEE_COMMAND_SIZE)
++		return -E2BIG;
++
++	if (cmd_len < TPM_HEADER_SIZE || cmd_len > bufsiz)
++		return -EINVAL;
++
++	memcpy(&header, buf, sizeof(header));
++	if (be32_to_cpu(header.length) != cmd_len ||
++	    be16_to_cpu(header.tag) != TPM2_ST_NO_SESSIONS)
++		return -EINVAL;
++	if (!qcom_tpm_qsee_command_allowed(be32_to_cpu(header.ordinal))) {
++		dev_warn_ratelimited(chip->dev.parent,
++			"TPM validation mode rejected command 0x%x\n",
++			be32_to_cpu(header.ordinal));
++		return -EACCES;
++	}
++
++	if (QCOM_TPM_QSEE_CONTROL_AREA_CMD_OFF + QCOM_TPM_QSEE_COMMAND_SIZE +
++	    QCOM_TPM_QSEE_RESPONSE_SIZE >
++	    QCOM_TPM_QSEE_CONTROL_AREA_SIZE)
++		return -E2BIG;
++
++	mutex_lock(&qtpm->lock);
++
++	command = qtpm->control_area + QCOM_TPM_QSEE_CONTROL_AREA_CMD_OFF;
++	response = command + QCOM_TPM_QSEE_COMMAND_SIZE;
++	command_phys = qtpm->control_area_phys +
++		       QCOM_TPM_QSEE_CONTROL_AREA_CMD_OFF;
++	response_phys = command_phys + QCOM_TPM_QSEE_COMMAND_SIZE;
++	command_le = cpu_to_le64(command_phys);
++	response_le = cpu_to_le64(response_phys);
++
++	writel(0, qtpm->control_area + QCOM_TPM_QSEE_CA_STATUS);
++	memcpy_toio(command, buf, cmd_len);
++	memset_io(response, 0, QCOM_TPM_QSEE_RESPONSE_SIZE);
++
++	writel(QCOM_TPM_QSEE_COMMAND_SIZE,
++	       qtpm->control_area + QCOM_TPM_QSEE_CA_COMMAND_SIZE);
++	memcpy_toio(qtpm->control_area + QCOM_TPM_QSEE_CA_COMMAND, &command_le,
++		    sizeof(command_le));
++	writel(QCOM_TPM_QSEE_RESPONSE_SIZE,
++	       qtpm->control_area + QCOM_TPM_QSEE_CA_RESPONSE_SIZE);
++	memcpy_toio(qtpm->control_area + QCOM_TPM_QSEE_CA_RESPONSE, &response_le,
++		    sizeof(response_le));
++	writel(1, qtpm->control_area + QCOM_TPM_QSEE_CA_START);
++
++	/* Ensure the TA observes the command and control area writes. */
++	wmb();
++
++	ret = qcom_tpm_qsee_send_ta_command(qtpm,
++					    QCOM_TPM_QSEE_CMD_SEND_COMMAND,
++					    0, NULL);
++	if (ret)
++		goto out_unlock;
++
++	/* Ensure the CPU observes the TA response writes before reading them. */
++	rmb();
++
++	if (readl(qtpm->control_area + QCOM_TPM_QSEE_CA_STATUS) ||
++	    readl(qtpm->control_area + QCOM_TPM_QSEE_CA_START)) {
++		ret = -EIO;
++		goto out_unlock;
++	}
++	memcpy_fromio(&header, response, sizeof(header));
++	if (be16_to_cpu(header.tag) != TPM2_ST_NO_SESSIONS) {
++		ret = -EIO;
++		goto out_unlock;
++	}
++	response_len = be32_to_cpu(header.length);
++
++	if (response_len < TPM_HEADER_SIZE) {
++		ret = -EIO;
++		goto out_unlock;
++	}
++
++	if (response_len > QCOM_TPM_QSEE_RESPONSE_SIZE || response_len > bufsiz) {
++		ret = -EIO;
++		goto out_unlock;
++	}
++
++	memcpy_fromio(buf, response, response_len);
++	ret = response_len;
++
++out_unlock:
++	mutex_unlock(&qtpm->lock);
++	return ret;
++}
++
++static const struct tpm_class_ops qcom_tpm_qsee_ops = {
++	.flags = TPM_OPS_AUTO_STARTUP,
++	.send = qcom_tpm_qsee_send,
++};
++
++static int qcom_tpm_qsee_probe(struct auxiliary_device *aux_dev,
++			       const struct auxiliary_device_id *aux_dev_id)
++{
++	struct device *dev = &aux_dev->dev;
++	struct qcom_tzmem_pool_config pool_config = {};
++	struct qcom_tpm_qsee *qtpm;
++	struct tpm_chip *chip;
++	u64 tpm_type;
++	int ret;
++
++	if (!allow_probe || !of_machine_is_compatible("huawei,gaokun3"))
++		return -ENODEV;
++
++	qtpm = devm_kzalloc(dev, sizeof(*qtpm), GFP_KERNEL);
++	if (!qtpm)
++		return -ENOMEM;
++
++	qtpm->client = container_of(aux_dev, struct qseecom_client, aux_dev);
++	mutex_init(&qtpm->lock);
++
++	pool_config.initial_size = SZ_4K;
++	pool_config.policy = QCOM_TZMEM_POLICY_MULTIPLIER;
++	pool_config.increment = 2;
++	pool_config.max_size = SZ_64K;
++
++	qtpm->mempool = devm_qcom_tzmem_pool_new(dev, &pool_config);
++	if (IS_ERR(qtpm->mempool))
++		return PTR_ERR(qtpm->mempool);
++
++	ret = qcom_scm_query_tpm_type(&tpm_type);
++	if (ret)
++		return dev_err_probe(dev, ret, "failed to query TPM type\n");
++
++	if (tpm_type != QCOM_TPM_TYPE_FTPM) {
++		dev_err(dev, "unsupported TPM type %#llx (%s)\n",
++			tpm_type, qcom_tpm_type_name(tpm_type));
++		return -ENODEV;
++	}
++
++	ret = qcom_tpm_qsee_query_info(qtpm);
++	if (ret)
++		return dev_err_probe(dev, ret, "failed to query TPM app info\n");
++
++	qtpm->control_area = devm_ioremap_wc(dev, qtpm->control_area_phys,
++					     QCOM_TPM_QSEE_CONTROL_AREA_SIZE);
++	if (!qtpm->control_area)
++		return -ENOMEM;
++
++	ret = qcom_tpm_qsee_create_control_area_bridge(qtpm);
++	if (ret)
++		return dev_err_probe(dev, ret,
++				     "failed to share TPM control area\n");
++
++	chip = tpm_chip_alloc(dev, &qcom_tpm_qsee_ops);
++	if (IS_ERR(chip))
++		return PTR_ERR(chip);
++
++	qtpm->chip = chip;
++	qtpm->chip->flags |= TPM_CHIP_FLAG_TPM2 | TPM_CHIP_FLAG_SYNC |
++			     TPM_CHIP_FLAG_HWRNG_DISABLED;
++	auxiliary_set_drvdata(aux_dev, qtpm);
++
++	ret = tpm_chip_register(qtpm->chip);
++	if (ret) {
++		put_device(&qtpm->chip->dev);
++		return ret;
++	}
++
++	return 0;
++}
++
++static void qcom_tpm_qsee_remove(struct auxiliary_device *aux_dev)
++{
++	struct qcom_tpm_qsee *qtpm = auxiliary_get_drvdata(aux_dev);
++
++	tpm_chip_unregister(qtpm->chip);
++	put_device(&qtpm->chip->dev);
++}
++
++static const struct auxiliary_device_id qcom_tpm_qsee_id_table[] = {
++	{ .name = "qcom_qseecom.tpm" },
++	{}
++};
++MODULE_DEVICE_TABLE(auxiliary, qcom_tpm_qsee_id_table);
++
++static struct auxiliary_driver qcom_tpm_qsee_driver = {
++	.name = "tpm_qcom_qsee",
++	.probe = qcom_tpm_qsee_probe,
++	.remove = qcom_tpm_qsee_remove,
++	.id_table = qcom_tpm_qsee_id_table,
++};
++module_auxiliary_driver(qcom_tpm_qsee_driver);
++
++MODULE_DESCRIPTION("Gaokun3 QSEE fTPM non-provisioning validation driver");
++MODULE_LICENSE("GPL");
+-- 
+2.55.0

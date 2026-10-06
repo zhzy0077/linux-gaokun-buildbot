@@ -82,6 +82,8 @@ The image and local-install workflows now follow the standard `kernel-install` +
 
 Touchscreen mode-selection fix and validation: [GPIO 174 notes (Chinese)](docs/touchscreen_spi_mode_zh.md).
 
+Opt-in QSEECOM fTPM validation and the EL2 fixed-memory sharing fix: [TPM notes (Chinese)](docs/tpm_qsee_zh.md).
+
 For an overview of hardware support status on the device, see [right-0903/linux-gaokun `## Feature Support`](https://github.com/right-0903/linux-gaokun?tab=readme-ov-file#feature-support).
 
 ## References
