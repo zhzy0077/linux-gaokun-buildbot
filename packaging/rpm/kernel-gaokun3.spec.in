@@ -3,7 +3,7 @@
 
 Name:           @PKG_NAME@
 Version:        @KREL_VERSION@
-Release:        7%{?dist}
+Release:        8%{?dist}
 Summary:        Kernel image, DTB, config, and System.map for the gaokun3 kernel
 License:        GPL-2.0-only
 ExclusiveArch:  aarch64
@@ -12,6 +12,7 @@ Source0:        @SOURCE_NAME@
 Provides:       kernel = %{version}-%{release}
 Requires(posttrans): dracut
 Requires(posttrans): systemd
+Requires(posttrans): gaokun3-boot-integration >= 1
 Requires(preun): systemd
 
 %description
@@ -29,42 +30,13 @@ cp -a boot %{buildroot}/
 cp -a usr %{buildroot}/
 
 %posttrans
-if [ "$1" -ge 1 ] && command -v dracut >/dev/null 2>&1 && command -v kernel-install >/dev/null 2>&1; then
-    temp_conf_root="$(mktemp -d)"
-    cleanup() {
-        rm -rf "$temp_conf_root"
-    }
-    trap cleanup EXIT
-
-    if [ -s /etc/kernel/cmdline ]; then
-        cmdline="$(tr -s '[:space:]' ' ' </etc/kernel/cmdline)"
-    else
-        cmdline="$(tr ' ' '\n' </proc/cmdline | grep -ve '^BOOT_IMAGE=' -e '^initrd=' | tr '\n' ' ')"
-    fi
-    cmdline="${cmdline%" "}"
-
-    printf 'layout=bls\n' > "$temp_conf_root/install.conf"
-    printf '%s\n' "$cmdline" > "$temp_conf_root/cmdline"
-    printf 'qcom/@DTB_FILE@\n' > "$temp_conf_root/devicetree"
-
-    install -d /etc/kernel/install.d
-    ln -sf /dev/null /etc/kernel/install.d/51-dracut-rescue.install
-    kernel-install --entry-token=machine-id remove 0-rescue >/dev/null 2>&1 || :
-    rm -rf /boot/*0-rescue* \
-           /boot/efi/*/0-rescue \
-           /boot/efi/loader/entries/*-0-rescue.conf >/dev/null 2>&1 || :
-
-    dracut --force --kver @KREL@ >/dev/null 2>&1 || :
-    # add updates the existing entry. A preceding remove would let Fedora's
-    # GRUB plugin delete the /boot/vmlinuz file just installed by this RPM.
-    KERNEL_INSTALL_CONF_ROOT="$temp_conf_root" \
-        kernel-install --make-entry-directory=yes --entry-token=machine-id add \
-        @KREL@ /boot/vmlinuz-@KREL@ >/dev/null 2>&1 || :
-fi
+# The platform helper derives first-install parameters from the target fstab,
+# then passes one generated initrd to kernel-install. Anaconda installs the loader.
+%{_libexecdir}/gaokun3/kernel-setup @KREL@ qcom/@DTB_FILE@
 
 %preun
 if [ "$1" -eq 0 ] && command -v kernel-install >/dev/null 2>&1; then
-    kernel-install --entry-token=machine-id remove @KREL@ >/dev/null 2>&1 || :
+    kernel-install --esp-path=/boot/efi --entry-token=machine-id remove @KREL@ >/dev/null 2>&1 || :
 fi
 
 %files
@@ -75,10 +47,8 @@ fi
 /usr/lib/dracut/dracut.conf.d/90-gaokun3-@KREL@.conf
 
 %changelog
-* Tue Oct 06 2026 Gaokun buildbot - @KREL_VERSION@-7
+* Tue Oct 06 2026 Gaokun buildbot - @KREL_VERSION@-8
 - Add opt-in QSEE fTPM validation with HLOS sharing for firmware control memory
-
-* Mon Oct 05 2026 Gaokun buildbot - @KREL_VERSION@-6
 - Integrate Gaokun CPU/touchscreen support and early firmware collection
 - Support Anaconda discovery and safe kernel-install updates
 

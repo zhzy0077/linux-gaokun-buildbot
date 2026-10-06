@@ -53,7 +53,8 @@ ACPI CRB 驱动的标准 SMC 方法 11 接入。
   # CONFIG_HW_RANDOM_TPM is not set
   ```
 
-- 内核、模块、开发包 Release 同步为 **7**。现有 RPM 流水线自动包含新补丁及模块。
+- 内核、模块、开发包 Release 同步为 **8**，包含安装器分支的 RPM 启动集成。
+  现有 RPM 流水线自动包含新补丁及模块。
 - 新增依赖只涉及内核 TPM/SCM 接口；本方案不添加用户态守护进程。
 
 动态内存仍调用 `qcom_tzmem_alloc()`。固定区域直接调用已有的
@@ -107,8 +108,9 @@ PCR 的行为，要求每批取得进展、响应选择属于剩余请求，并�
 - 更长时间待机及更多恢复周期的耐久性验证。
 - PCR5 事件日志重算不匹配的原因。
 - 放开验证限制前的 TPM 生命周期、授权和密钥管理设计。
-- 完整 Release 7 RPM 构建/安装验收；当前设备使用独立测试内核中的更新模块。
-- 后续 Secure Boot、UKI/PCR 策略和 LUKS TPM 注册，另行实施。
+- 完整 Release 8 RPM 构建/安装验收；当前设备使用独立测试内核中的更新模块。
+- UKI/PCR 策略和 LUKS TPM 注册另行实施；Secure Boot 受当前固件信任库限制，
+  见 [Secure Boot 限制](README_zh.md#secure-boot-限制)。
 
 ## 当前实机测试入口
 

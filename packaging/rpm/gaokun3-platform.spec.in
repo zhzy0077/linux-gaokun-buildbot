@@ -5,7 +5,7 @@
 
 Name:           gaokun3-platform
 Version:        @PLATFORM_VERSION@
-Release:        3%{?dist}
+Release:        5%{?dist}
 Summary:        Hardware configuration and desktop tools for Huawei Gaokun3
 # The existing tool sources do not declare a common SPDX license.
 License:        LicenseRef-Unknown
@@ -25,6 +25,10 @@ Requires:       polkit
 Requires:       xdg-utils
 Requires:       pipewire
 Requires:       wireplumber
+Requires:       util-linux
+Requires:       systemd-udev
+Requires:       dracut
+Provides:       gaokun3-boot-integration = 1
 %{?systemd_requires}
 
 %description
@@ -54,6 +58,13 @@ sed -i "s|/usr/local/bin/patch-nvm-bdaddr.py|%{_libexecdir}/gaokun3/patch-nvm-bd
     %{buildroot}%{_prefix}/lib/modprobe.d/gaokun3-bluetooth-nvm.conf
 for source in tools/bluetooth/93-gaokun-bluetooth.conf tools/audio/94-gaokun-alsa.conf; do
     install -Dm644 "$source" "%{buildroot}%{_prefix}/lib/dracut/dracut.conf.d/$(basename "$source")"
+done
+install -Dm755 tools/boot/kernel-setup.py %{buildroot}%{_libexecdir}/gaokun3/kernel-setup
+install -Dm644 tools/boot/platform-cmdline %{buildroot}%{_datadir}/gaokun3/platform-cmdline
+install -Dm644 tools/boot/91-gaokun3-boot.conf %{buildroot}%{_prefix}/lib/dracut/dracut.conf.d/91-gaokun3-boot.conf
+install -Dm755 tools/boot/51-dracut-rescue.install %{buildroot}%{_sysconfdir}/kernel/install.d/51-dracut-rescue.install
+for file in slbounceaa64.efi qebspilaa64.efi tcblaunch.exe; do
+    install -Dm644 "tools/el2/$file" "%{buildroot}%{_datadir}/gaokun3/el2/$file"
 done
 install -Dm755 tools/bluetooth/patch-nvm-bdaddr.py %{buildroot}%{_libexecdir}/gaokun3/patch-nvm-bdaddr.py
 install -Dm755 tools/monitors/gdm-monitor-sync %{buildroot}%{_libexecdir}/gaokun3/gdm-monitor-sync
@@ -125,6 +136,8 @@ done
 %{_prefix}/lib/modprobe.d/gaokun3-*.conf
 %config(noreplace) %{_sysconfdir}/modprobe.d/dist-alsa.conf
 %config(noreplace) %{_sysconfdir}/xdg/monitors.xml
+%config(noreplace) %{_sysconfdir}/kernel/install.d/51-dracut-rescue.install
+%{_prefix}/lib/dracut/dracut.conf.d/91-gaokun3-boot.conf
 %{_prefix}/lib/dracut/dracut.conf.d/93-gaokun-bluetooth.conf
 %{_prefix}/lib/dracut/dracut.conf.d/94-gaokun-alsa.conf
 %{_libexecdir}/gaokun3
@@ -142,5 +155,6 @@ done
 %config(noreplace) %{_sysconfdir}/skel/.config/monitors.xml
 
 %changelog
-* Mon Oct 05 2026 Gaokun buildbot - @PLATFORM_VERSION@-3
-- Package Gaokun module, Bluetooth, display, audio and touchscreen integration
+* Tue Oct 06 2026 Gaokun buildbot - @PLATFORM_VERSION@-5
+- Package Gaokun hardware defaults and shared installation/kernel-update integration
+- Preload QRTR before udev coldplug to prevent ath11k asynchronous probe deadlock
