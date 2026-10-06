@@ -69,6 +69,29 @@ The image and local-install workflows now follow the standard `kernel-install` +
 - Fedora DTBs are installed in `/usr/lib/modules/<kernel-release>/dtb/qcom/` for `kernel-install`, plus `/boot/dtb-<kernel-release>/qcom/` as a compatibility copy.
 - The Gaokun3 image scripts provide `/etc/kernel/cmdline` and `/etc/kernel/devicetree`, then call `kernel-install add` to populate the final BLS entry.
 
+## Secure Boot limitation
+
+Secure Boot cannot currently be enabled for Linux on this device.
+
+Observed firmware trust state (BIOS 2.16):
+
+- PK: `HUAWEI`
+- KEK: `Microsoft Corporation KEK 2K CA 2023` only, with no KEK 2011
+- db: `Microsoft Windows Production PCA 2011` only; neither `Microsoft UEFI CA 2011` nor `Microsoft UEFI CA 2023` (third-party) is present
+- dbx: 83 SHA256 entries
+- `SetupMode=0`. The BIOS exposes only the Secure Boot Enable/Disable switch, with no custom key management, so an owner key cannot be enrolled.
+
+Consequences:
+
+- The Linux shim trust anchor is missing. Fedora `shim-aa64` is signed by `Microsoft UEFI CA 2023`, which is not in db, so the firmware rejects it; MOK enrollment cannot establish the initial firmware-to-shim trust.
+- Microsoft's published third-party CA append payload `DBUpdate3P2023.bin` is authenticated by `Microsoft Corporation KEK CA 2011`, which is absent here. The enrolled KEK2023 cannot validate it, so it must not be applied.
+- The first-party `DBUpdate1P2023.bin` (`Windows UEFI CA 2023`) append does verify against the enrolled KEK2023, but it adds only the Windows CA, not the third-party CA used by shim.
+- The Huawei PK-signed KEK update payloads Microsoft publishes only add KEK2023, which is already enrolled.
+
+No KEK2023-authorized third-party CA append payload or OEM-supported trust-enrollment method is currently known. The same locked-down case is tracked in [microsoft/secureboot_objects#422](https://github.com/microsoft/secureboot_objects/issues/422).
+
+The kernel, `systemd-boot` and EFI payloads produced by this repository carry no PE signatures. Keep Secure Boot disabled, including after firmware or Windows updates.
+
 ## Getting started
 
 - Release: <https://github.com/KawaiiHachimi/linux-gaokun-build/releases>

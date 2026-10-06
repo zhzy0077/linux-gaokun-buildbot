@@ -69,6 +69,29 @@
 - Fedora DTB 安装在 `/usr/lib/modules/<kernel-release>/dtb/qcom/` 供 `kernel-install` 使用，另有 `/boot/dtb-<kernel-release>/qcom/` 兼容副本。
 - Gaokun3 镜像脚本提供 `/etc/kernel/cmdline` 和 `/etc/kernel/devicetree`，然后调用 `kernel-install add` 填充最终的 BLS 条目。
 
+## Secure Boot 限制
+
+本设备目前无法为 Linux 开启 Secure Boot。
+
+实测固件信任状态（BIOS 2.16）：
+
+- PK：`HUAWEI`
+- KEK：仅 `Microsoft Corporation KEK 2K CA 2023`，没有 KEK 2011
+- db：仅 `Microsoft Windows Production PCA 2011`，没有 `Microsoft UEFI CA 2011`，也没有 `Microsoft UEFI CA 2023`（第三方）
+- dbx：83 条 SHA256
+- `SetupMode=0`。BIOS 只提供 Secure Boot 开关，没有自定义密钥管理，无法注册自有机主密钥。
+
+后果：
+
+- 缺少 Linux shim 的信任锚。Fedora `shim-aa64` 由 `Microsoft UEFI CA 2023` 签名，而该证书不在 db 中，固件会拒绝它；MOK 注册无法建立固件到 shim 的初始信任。
+- 微软发布的第三方 CA 追加载荷 `DBUpdate3P2023.bin` 由 `Microsoft Corporation KEK CA 2011` 认证，本机没有该 KEK，已注册的 KEK2023 无法验证它，因此不能应用。
+- 第一方 `DBUpdate1P2023.bin`（`Windows UEFI CA 2023`）的追加更新可以用已注册的 KEK2023 验证通过，但它只添加 Windows CA，不添加 shim 所需的第三方 CA。
+- 微软发布的华为 PK 签名 KEK 更新只添加 KEK2023，而本机已具备该证书。
+
+目前没有已知的、由 KEK2023 授权的第三方 CA 追加载荷或 OEM 提供的信任注册机制。同类锁定案例见 [microsoft/secureboot_objects#422](https://github.com/microsoft/secureboot_objects/issues/422)。
+
+本仓库产出的内核、`systemd-boot` 和 EFI 载荷均不带 PE 签名。请保持 Secure Boot 关闭，包括在固件或 Windows 更新之后。
+
 ## 快速开始
 
 - Release：<https://github.com/KawaiiHachimi/linux-gaokun-build/releases>
