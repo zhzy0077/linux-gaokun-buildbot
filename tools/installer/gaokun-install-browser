@@ -1,0 +1,8 @@
+#!/usr/bin/bash
+# Anaconda owns this viewer; use Fedora's packaged Live theme without liveinst.
+set -euo pipefail
+profile=$(mktemp -d "${XDG_RUNTIME_DIR:?}/gaokun-anaconda.XXXXXX")
+cp -a /usr/share/anaconda/firefox-theme/live/. "$profile/"
+exec env MOZ_APP_TITLE="" MOZ_APP_REMOTINGNAME=liveinst \
+    MOZ_GTK_TITLEBAR_DECORATION=client \
+    /usr/bin/firefox --new-instance --profile "$profile" "$@"

@@ -69,7 +69,10 @@ The USB uses a password-locked `installer` account with automatic GNOME login.
 Anaconda Web UI opens automatically; the desktop icon uses the same launcher,
 with background media validation and a single-instance lock. DNF Anaconda owns
 the browser lifecycle; the launcher does not invoke Live-copy `liveinst`, which
-would open a second viewer. There are no custom pre-install dialogs. Its local administrator policy is confined to the media.
+would open a second viewer. The configured browser launcher uses Fedora's
+packaged Live Firefox theme to hide browser chrome, in a fresh per-launch
+runtime profile; it does not maintain a separate CSS theme. There are no custom
+pre-install dialogs. Its local administrator policy is confined to the media.
 SSH is disabled by default. The target account is created through GNOME Initial
 Setup; configure its Wi-Fi and SSH there or after login. Live NetworkManager
 profiles are not inherited and target SSH remains disabled.

@@ -154,6 +154,7 @@ def prepare(repo, package_dir, work, rootfs, version):
         'gaokun_installer.py': '/opt/installer/gaokun_installer.py',
         'gaokun-install': '/usr/local/bin/gaokun-install',
         'gaokun-install-backend': '/usr/local/libexec/gaokun-install-backend',
+        'gaokun-install-browser': '/usr/local/libexec/gaokun-install-browser',
         'gaokun-install.desktop': '/usr/share/applications/gaokun-install.desktop',
         'org.gaokun.installer.policy': '/usr/share/polkit-1/actions/org.gaokun.installer.policy',
         '90-gaokun.conf': '/etc/anaconda/conf.d/90-gaokun.conf',
@@ -162,7 +163,8 @@ def prepare(repo, package_dir, work, rootfs, version):
         target = rootfs / relative.lstrip('/')
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(repo / 'tools/installer' / name, target)
-        target.chmod(0o755 if name in ('gaokun-install', 'gaokun-install-backend') else 0o644)
+        target.chmod(0o755 if name in ('gaokun-install', 'gaokun-install-backend',
+                                     'gaokun-install-browser') else 0o644)
     defaults = rootfs / 'usr/share/anaconda/interactive-defaults.ks'
     defaults.parent.mkdir(parents=True, exist_ok=True)
     defaults.write_text(render_defaults(text, (rootfs / 'usr/share/gaokun3/platform-cmdline').read_text()))
