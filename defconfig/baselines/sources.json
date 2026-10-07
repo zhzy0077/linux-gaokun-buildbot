@@ -1,0 +1,29 @@
+{
+  "fedora": {
+    "release": "44",
+    "architecture": "aarch64",
+    "flavour": "kernel-core",
+    "kernel_version": "7.2.8-200.fc44",
+    "config": "fedora-44-arm64.config",
+    "config_sha256": "93b427f81da841b88a8b83c407e743d1d3ccc4cd598050b9fca93bb7564effbb",
+    "package_url": "https://dl.fedoraproject.org/pub/fedora/linux/updates/44/Everything/aarch64/Packages/k/kernel-core-7.2.8-200.fc44.aarch64.rpm",
+    "package_sha256": "5378f11ef3279a327b10e6ab12b3e81af43acc29bc04a7d31c923da213597b7f",
+    "package_member": "/lib/modules/7.2.8-200.fc44.aarch64/config",
+    "verification": "rpmkeys --checksig: digests signatures OK (Fedora 44 key)"
+  },
+  "ubuntu": {
+    "release": "26.04",
+    "architecture": "arm64",
+    "flavour": "generic (4K)",
+    "kernel_version": "7.0.0-38.38",
+    "config": "ubuntu-26.04-arm64.config",
+    "config_sha256": "c5462b866b5fdb2fe7177a1ae2b2bdff237679cdce2cf14a994c6d5387fdb107",
+    "package_url": "https://ports.ubuntu.com/ubuntu-ports/pool/main/l/linux/linux-headers-7.0.0-38-generic_7.0.0-38.38_arm64.deb",
+    "package_sha256": "7884715d8a8af2e4941d6d369b250c5c9493bd61ca10bd5b18e39aa55f69effd",
+    "package_member": "/usr/src/linux-headers-7.0.0-38-generic/.config",
+    "verification": "Ubuntu Archive 2018 InRelease signature -> SHA256 Packages.xz -> SHA256 DEB",
+    "inrelease_url": "https://ports.ubuntu.com/ubuntu-ports/dists/resolute-updates/InRelease",
+    "inrelease_sha256": "26fd5b4daa2682407a1494e436f7ff915b8071686d94fc1819962ff68a70a42c",
+    "packages_sha256": "34f19cc55acf6fc9bd9fc34417c00b5f453eb49a8493d993a1a9d3f9a98bc762"
+  }
+}

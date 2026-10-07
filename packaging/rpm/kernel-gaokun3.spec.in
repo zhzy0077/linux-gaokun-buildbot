@@ -3,7 +3,7 @@
 
 Name:           @PKG_NAME@
 Version:        @KREL_VERSION@
-Release:        9%{?dist}
+Release:        10%{?dist}
 Summary:        Kernel image, DTB, config, and System.map for the gaokun3 kernel
 License:        GPL-2.0-only
 ExclusiveArch:  aarch64
@@ -47,8 +47,8 @@ fi
 /usr/lib/dracut/dracut.conf.d/90-gaokun3-@KREL@.conf
 
 %changelog
-* Wed Oct 07 2026 Gaokun buildbot - @KREL_VERSION@-9
-- Apply Fedora kernel policy and verify the final distribution configuration
+* Wed Oct 07 2026 Gaokun buildbot - @KREL_VERSION@-10
+- Start from the pinned Fedora arm64 configuration and retain Gaokun patch requirements
 - Add opt-in QSEE fTPM validation with HLOS sharing for firmware control memory
 - Integrate Gaokun CPU/touchscreen support and early firmware collection
 - Support Anaconda discovery and safe kernel-install updates
