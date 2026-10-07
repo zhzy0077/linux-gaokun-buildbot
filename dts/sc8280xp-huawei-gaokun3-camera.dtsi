@@ -60,6 +60,9 @@
 		compatible = "regulator-fixed";
 
 		regulator-name = "vreg_camr";
+		/* GPIO92 gates the rear sensor's board-provided core supply. */
+		regulator-min-microvolt = <1200000>;
+		regulator-max-microvolt = <1200000>;
 
 		gpio = <&tlmm 92 GPIO_ACTIVE_HIGH>;
 		enable-active-high;
@@ -128,7 +131,7 @@
 
 				clock-lanes = <7>;
 				data-lanes = <0 1 2 3>;
-				remote-endpoint = <&s5k3l6_ep>;
+				remote-endpoint = <&ov13b10_ep>;
 			};
 		};
 
@@ -156,30 +159,28 @@
 	};
 
 	/*
-	 * https://source.puri.sm/Librem5/linux/-/blob/pureos/latest/drivers/media/i2c/s5k3l6xx.c
-	 *
-	 * poor image quality, no plan to extract downstream registers
-	 * configuration for it. I think nobody uses camera without tuning
-	 * to take photos. Front camera with conference is enough.
-	 *
-	 * This sensor has never been detected on 2023 model
+	 * OV13B10 variant: Windows CAMS_RES_QRD.bin specifies L2B 2.8V,
+	 * L2C 1.8V, GPIO92 core enable, GPIO7 reset and MCLK4.
+	 * L2B is shared with display VDDI; the sensor driver votes 2.8V
+	 * while powered. The upstream sensor register tables use 19.2MHz.
+	 * See docs/camera_support.md for module identification and testing.
 	 */
-	camera_rear: camera@10 {
-		compatible = "samsung,s5k3l6xx";
-		reg = <0x10>;
+	camera_rear: camera@36 {
+		compatible = "ovti,ov13b10";
+		reg = <0x36>;
 
 		pinctrl-0 = <&camr_rgb_default>;
 		pinctrl-names = "default";
 
 		clocks = <&camcc CAMCC_MCLK4_CLK>;
-		clock-names = "mclk";
-		clock-frequency = <24000000>;
+		assigned-clocks = <&camcc CAMCC_MCLK4_CLK>;
+		assigned-clock-rates = <19200000>;
 
-		rstn-gpios = <&tlmm 7 GPIO_ACTIVE_LOW>;
+		reset-gpios = <&tlmm 7 GPIO_ACTIVE_LOW>;
 
-		vddio-supply = <&vreg_camr>;
-		vdda-supply = <&vreg_l2b>; // 2.8v
-		vddd-supply = <&vreg_l2c>; // 1.8v
+		avdd-supply = <&vreg_l2b>;
+		dovdd-supply = <&vreg_l2c>;
+		dvdd-supply = <&vreg_camr>;
 
 		leds = <&privacy_led>; // &camera_flash can't be enabled for now
 		led-names = "privacy";
@@ -190,8 +191,9 @@
 		rotation = <180>; /* FIXME */
 
 		port {
-			s5k3l6_ep: endpoint {
+			ov13b10_ep: endpoint {
 				data-lanes = <1 2 3 4>;
+				link-frequencies = /bits/ 64 <560000000>;
 				remote-endpoint = <&csiphy0_ep>;
 			};
 		};

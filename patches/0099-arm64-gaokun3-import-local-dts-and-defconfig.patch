@@ -4,20 +4,20 @@ Date: Sat, 11 Jul 2026 16:55:30 +0000
 Subject: [PATCH 20/20] arm64: gaokun3: import board support
 
 ---
- .../qcom/sc8280xp-huawei-gaokun3-camera.dtsi  | 307 +++++++++++
+ .../qcom/sc8280xp-huawei-gaokun3-camera.dtsi  | 309 +++++++++++
  .../boot/dts/qcom/sc8280xp-huawei-gaokun3.dts | 451 ++++++++++++----
- arch/arm64/configs/gaokun3_defconfig          | 495 ++++++++++++++++++
+ arch/arm64/configs/gaokun3_defconfig          | 496 ++++++++++++++++++
  arch/arm64/kernel/cpuinfo.c                  |   3 +
- 4 files changed, 1155 insertions(+), 101 deletions(-)
+ 4 files changed, 1158 insertions(+), 101 deletions(-)
  create mode 100644 arch/arm64/boot/dts/qcom/sc8280xp-huawei-gaokun3-camera.dtsi
  create mode 100644 arch/arm64/configs/gaokun3_defconfig
 
 diff --git a/arch/arm64/boot/dts/qcom/sc8280xp-huawei-gaokun3-camera.dtsi b/arch/arm64/boot/dts/qcom/sc8280xp-huawei-gaokun3-camera.dtsi
 new file mode 100644
-index 000000000..69fa4db9b
+index 000000000..347d2df68
 --- /dev/null
 +++ b/arch/arm64/boot/dts/qcom/sc8280xp-huawei-gaokun3-camera.dtsi
-@@ -0,0 +1,307 @@
+@@ -0,0 +1,309 @@
 +// SPDX-License-Identifier: BSD-3-Clause
 +/*
 + * Copyright (c) 2021, The Linux Foundation. All rights reserved.
@@ -80,6 +80,9 @@ index 000000000..69fa4db9b
 +		compatible = "regulator-fixed";
 +
 +		regulator-name = "vreg_camr";
++		/* GPIO92 gates the rear sensor's board-provided core supply. */
++		regulator-min-microvolt = <1200000>;
++		regulator-max-microvolt = <1200000>;
 +
 +		gpio = <&tlmm 92 GPIO_ACTIVE_HIGH>;
 +		enable-active-high;
@@ -148,7 +151,7 @@ index 000000000..69fa4db9b
 +
 +				clock-lanes = <7>;
 +				data-lanes = <0 1 2 3>;
-+				remote-endpoint = <&s5k3l6_ep>;
++				remote-endpoint = <&ov13b10_ep>;
 +			};
 +		};
 +
@@ -176,30 +179,28 @@ index 000000000..69fa4db9b
 +	};
 +
 +	/*
-+	 * https://source.puri.sm/Librem5/linux/-/blob/pureos/latest/drivers/media/i2c/s5k3l6xx.c
-+	 *
-+	 * poor image quality, no plan to extract downstream registers
-+	 * configuration for it. I think nobody uses camera without tuning
-+	 * to take photos. Front camera with conference is enough.
-+	 *
-+	 * This sensor has never been detected on 2023 model
++	 * OV13B10 variant: Windows CAMS_RES_QRD.bin specifies L2B 2.8V,
++	 * L2C 1.8V, GPIO92 core enable, GPIO7 reset and MCLK4.
++	 * L2B is shared with display VDDI; the sensor driver votes 2.8V
++	 * while powered. The upstream sensor register tables use 19.2MHz.
++	 * See docs/camera_support.md for module identification and testing.
 +	 */
-+	camera_rear: camera@10 {
-+		compatible = "samsung,s5k3l6xx";
-+		reg = <0x10>;
++	camera_rear: camera@36 {
++		compatible = "ovti,ov13b10";
++		reg = <0x36>;
 +
 +		pinctrl-0 = <&camr_rgb_default>;
 +		pinctrl-names = "default";
 +
 +		clocks = <&camcc CAMCC_MCLK4_CLK>;
-+		clock-names = "mclk";
-+		clock-frequency = <24000000>;
++		assigned-clocks = <&camcc CAMCC_MCLK4_CLK>;
++		assigned-clock-rates = <19200000>;
 +
-+		rstn-gpios = <&tlmm 7 GPIO_ACTIVE_LOW>;
++		reset-gpios = <&tlmm 7 GPIO_ACTIVE_LOW>;
 +
-+		vddio-supply = <&vreg_camr>;
-+		vdda-supply = <&vreg_l2b>; // 2.8v
-+		vddd-supply = <&vreg_l2c>; // 1.8v
++		avdd-supply = <&vreg_l2b>;
++		dovdd-supply = <&vreg_l2c>;
++		dvdd-supply = <&vreg_camr>;
 +
 +		leds = <&privacy_led>; // &camera_flash can't be enabled for now
 +		led-names = "privacy";
@@ -210,8 +211,9 @@ index 000000000..69fa4db9b
 +		rotation = <180>; /* FIXME */
 +
 +		port {
-+			s5k3l6_ep: endpoint {
++			ov13b10_ep: endpoint {
 +				data-lanes = <1 2 3 4>;
++				link-frequencies = /bits/ 64 <560000000>;
 +				remote-endpoint = <&csiphy0_ep>;
 +			};
 +		};
@@ -1102,10 +1104,10 @@ index cd575e20d..29ce40fc7 100644
 +#include "sc8280xp-huawei-gaokun3-camera.dtsi"
 diff --git a/arch/arm64/configs/gaokun3_defconfig b/arch/arm64/configs/gaokun3_defconfig
 new file mode 100644
-index 000000000..c7720d443
+index 000000000..b5b83964c
 --- /dev/null
 +++ b/arch/arm64/configs/gaokun3_defconfig
-@@ -0,0 +1,495 @@
+@@ -0,0 +1,496 @@
 +CONFIG_LOCALVERSION="-gaokun3"
 +# CONFIG_LOCALVERSION_AUTO is not set
 +CONFIG_SYSVIPC=y
@@ -1403,6 +1405,7 @@ index 000000000..c7720d443
 +CONFIG_VIDEO_QCOM_CAMSS=m
 +CONFIG_VIDEO_QCOM_IRIS=m
 +CONFIG_VIDEO_HI846=m
++CONFIG_VIDEO_OV13B10=m
 +CONFIG_VIDEO_DW9714=m
 +CONFIG_DRM=y
 +CONFIG_DRM_LOAD_EDID_FIRMWARE=y

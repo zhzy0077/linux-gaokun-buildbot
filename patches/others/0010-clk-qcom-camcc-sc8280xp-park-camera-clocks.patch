@@ -1,0 +1,54 @@
+From d287a27dfff2d601ec2110a727a26f395e7f1690 Mon Sep 17 00:00:00 2001
+From: zhzy0077 <zhzy0077@users.noreply.github.com>
+Date: Wed, 7 Oct 2026 15:40:16 +0000
+Subject: [PATCH] clk: qcom: camcc-sc8280xp: park CAMNOC and AHB RCGs on
+ disable
+
+Use shared RCG operations for the CAMNOC AXI, fast AHB and slow AHB
+clock sources. These operations park the hardware on the safe XO source
+when disabled, allowing TITAN_TOP power-domain handshakes after the PLL
+is stopped.
+
+Without this, opening a camera after earlier capture sessions can fail
+with titan_top_gdsc stuck off and a CAMSS pipeline timeout.
+
+Adapted from vahiru/gaokun-android patch 0031 and its hardware findings
+section 105.
+---
+ drivers/clk/qcom/camcc-sc8280xp.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/clk/qcom/camcc-sc8280xp.c b/drivers/clk/qcom/camcc-sc8280xp.c
+index 660d865..5b8dce9 100644
+--- a/drivers/clk/qcom/camcc-sc8280xp.c
++++ b/drivers/clk/qcom/camcc-sc8280xp.c
+@@ -667,7 +667,7 @@ static struct clk_rcg2 camcc_camnoc_axi_clk_src = {
+ 		.name = "camcc_camnoc_axi_clk_src",
+ 		.parent_data = camcc_parent_data_2,
+ 		.num_parents = ARRAY_SIZE(camcc_parent_data_2),
+-		.ops = &clk_rcg2_ops,
++		.ops = &clk_rcg2_shared_ops,
+ 	},
+ };
+ 
+@@ -835,7 +835,7 @@ static struct clk_rcg2 camcc_fast_ahb_clk_src = {
+ 		.name = "camcc_fast_ahb_clk_src",
+ 		.parent_data = camcc_parent_data_0,
+ 		.num_parents = ARRAY_SIZE(camcc_parent_data_0),
+-		.ops = &clk_rcg2_ops,
++		.ops = &clk_rcg2_shared_ops,
+ 	},
+ };
+ 
+@@ -1370,7 +1370,7 @@ static struct clk_rcg2 camcc_slow_ahb_clk_src = {
+ 		.name = "camcc_slow_ahb_clk_src",
+ 		.parent_data = camcc_parent_data_0,
+ 		.num_parents = ARRAY_SIZE(camcc_parent_data_0),
+-		.ops = &clk_rcg2_ops,
++		.ops = &clk_rcg2_shared_ops,
+ 	},
+ };
+ 
+-- 
+2.56.0
+

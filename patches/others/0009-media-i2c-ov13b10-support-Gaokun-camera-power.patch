@@ -1,0 +1,150 @@
+From 8ff306396e2f6276e760838d7542ddd1e8736678 Mon Sep 17 00:00:00 2001
+From: zhzy0077 <zhzy0077@users.noreply.github.com>
+Date: Wed, 7 Oct 2026 22:57:12 +0800
+Subject: [PATCH] media: i2c: ov13b10: support Gaokun DT and shared camera rail
+
+Add OF matching for the OV13B10 rear-camera variant. Follow the Gaokun3
+Windows CAMS_RES_QRD power sequence and request 2.8V on L2B while the
+sensor is powered. Restore its idle voltage range on suspend and
+power-on failures.
+
+Scope the board power sequence to huawei,gaokun3 and preserve the
+existing sequence for ACPI devices.
+
+Adapted from vahiru/gaokun-android's OV13B10 driver patch (0034) and
+hardware investigation in docs/stage4-findings.md section 106.
+---
+ drivers/media/i2c/ov13b10.c | 65 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 65 insertions(+)
+
+diff --git a/drivers/media/i2c/ov13b10.c b/drivers/media/i2c/ov13b10.c
+index b0d3414..cdc9334 100644
+--- a/drivers/media/i2c/ov13b10.c
++++ b/drivers/media/i2c/ov13b10.c
+@@ -7,6 +7,7 @@
+ #include <linux/gpio/consumer.h>
+ #include <linux/i2c.h>
+ #include <linux/module.h>
++#include <linux/of.h>
+ #include <linux/pm_runtime.h>
+ #include <linux/regulator/consumer.h>
+ #include <media/v4l2-ctrls.h>
+@@ -717,6 +718,7 @@ struct ov13b10 {
+ 	struct clk *img_clk;
+ 	struct regulator_bulk_data supplies[ARRAY_SIZE(ov13b10_supply_names)];
+ 	struct gpio_desc *reset;
++	bool gaokun3;
+ 
+ 	/* V4L2 Controls */
+ 	struct v4l2_ctrl *link_freq;
+@@ -1190,11 +1192,60 @@ static int ov13b10_identify_module(struct ov13b10 *ov13b)
+ 		return -EIO;
+ 	}
+ 
++	dev_info(ov13b->dev, "chip id 0x%06x identified\n", val);
+ 	ov13b->identified = true;
+ 
+ 	return 0;
+ }
+ 
++/* Restore the shared AVDD/display rail's idle voltage range. */
++static void ov13b10_gaokun3_release_avdd(struct ov13b10 *ov13b)
++{
++	int ret;
++
++	ret = regulator_set_voltage(ov13b->supplies[1].consumer,
++				    1800000, 2800000);
++	if (ret)
++		dev_warn(ov13b->dev, "failed to release AVDD voltage vote: %d\n", ret);
++}
++
++/* Windows CAMS_RES_QRD: reset -> rails -> 1ms -> reset release -> 10ms -> MCLK. */
++static int ov13b10_gaokun3_power_on(struct ov13b10 *ov13b)
++{
++	int ret;
++
++	gpiod_set_value_cansleep(ov13b->reset, 1);
++
++	/* L2B also supplies display VDDI, which idles at 1.8V. */
++	ret = regulator_set_voltage(ov13b->supplies[1].consumer,
++				    2800000, 2800000);
++	if (ret)
++		return ret;
++
++	ret = regulator_bulk_enable(ARRAY_SIZE(ov13b10_supply_names),
++				    ov13b->supplies);
++	if (ret)
++		goto err_voltage;
++
++	usleep_range(1000, 1500);
++	gpiod_set_value_cansleep(ov13b->reset, 0);
++	usleep_range(10000, 11000);
++
++	ret = clk_prepare_enable(ov13b->img_clk);
++	if (ret)
++		goto err_supplies;
++
++	usleep_range(5000, 5500);
++	return 0;
++
++err_supplies:
++	gpiod_set_value_cansleep(ov13b->reset, 1);
++	regulator_bulk_disable(ARRAY_SIZE(ov13b10_supply_names), ov13b->supplies);
++err_voltage:
++	ov13b10_gaokun3_release_avdd(ov13b);
++	return ret;
++}
++
+ static int ov13b10_power_off(struct device *dev)
+ {
+ 	struct v4l2_subdev *sd = dev_get_drvdata(dev);
+@@ -1206,6 +1257,9 @@ static int ov13b10_power_off(struct device *dev)
+ 
+ 	clk_disable_unprepare(ov13b10->img_clk);
+ 
++	if (ov13b10->gaokun3)
++		ov13b10_gaokun3_release_avdd(ov13b10);
++
+ 	return 0;
+ }
+ 
+@@ -1215,6 +1269,9 @@ static int ov13b10_power_on(struct device *dev)
+ 	struct ov13b10 *ov13b10 = to_ov13b10(sd);
+ 	int ret;
+ 
++	if (ov13b10->gaokun3)
++		return ov13b10_gaokun3_power_on(ov13b10);
++
+ 	ret = clk_prepare_enable(ov13b10->img_clk);
+ 	if (ret < 0) {
+ 		dev_err(dev, "failed to enable imaging clock: %d", ret);
+@@ -1596,6 +1653,7 @@ static int ov13b10_probe(struct i2c_client *client)
+ 		return -ENOMEM;
+ 
+ 	ov13b->dev = &client->dev;
++	ov13b->gaokun3 = of_machine_is_compatible("huawei,gaokun3");
+ 
+ 	/* Check HW config */
+ 	ret = ov13b10_check_hwcfg(ov13b);
+@@ -1705,11 +1763,18 @@ static const struct acpi_device_id ov13b10_acpi_ids[] = {
+ MODULE_DEVICE_TABLE(acpi, ov13b10_acpi_ids);
+ #endif
+ 
++static const struct of_device_id ov13b10_of_ids[] = {
++	{ .compatible = "ovti,ov13b10" },
++	{ /* sentinel */ }
++};
++MODULE_DEVICE_TABLE(of, ov13b10_of_ids);
++
+ static struct i2c_driver ov13b10_i2c_driver = {
+ 	.driver = {
+ 		.name = "ov13b10",
+ 		.pm = pm_ptr(&ov13b10_pm_ops),
+ 		.acpi_match_table = ACPI_PTR(ov13b10_acpi_ids),
++		.of_match_table = ov13b10_of_ids,
+ 	},
+ 	.probe = ov13b10_probe,
+ 	.remove = ov13b10_remove,
+-- 
+2.56.0
+
