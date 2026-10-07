@@ -52,6 +52,15 @@ Ubuntu Archive 2018 InRelease 签名、Packages.xz SHA256、DEB SHA256 逐层验
 CI 提供 Rust 1.93.1、rust-src、bindgen 0.72.1、Clang/libclang、BTF/pahole 和 libdw，
 并强制验证 Rust/BTF 未因缺少工具而被关闭。
 
+## 打包磁盘占用
+
+完整发行版配置的标准/EL2 编译产物会同时保留在工作区。headers/devel 使用共享的
+`stage_kernel_devel` 在复制时排除对象、模块、归档和临时链接产物；保留生成的头文件、
+`Module.symvers`、Rust 元数据、构建工具及含 BTF 的最终 `vmlinux`，并还原可独立使用的
+源码 Makefile。`modules_install` 使用 `INSTALL_MOD_STRIP=1`，由 Kbuild 在签名前移除
+DWARF，保留模块 BTF 和签名。每个包完成后释放 staging，RPM 同时清理解包目录和源
+归档，成品移动到 artifacts。编译和打包阶段记录磁盘、inode 和工作区各目录占用。
+
 ## 验证和升级
 
 ```bash

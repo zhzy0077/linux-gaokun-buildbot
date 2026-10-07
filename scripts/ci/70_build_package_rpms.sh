@@ -7,6 +7,8 @@ set -euo pipefail
 : "${KERNEL_TAG:?missing KERNEL_TAG}"
 : "${PACKAGE_RELEASE_TAG:?missing PACKAGE_RELEASE_TAG}"
 
+source "$GAOKUN_DIR/scripts/ci/lib/kernel_package.sh"
+
 BUILD_EL2="${BUILD_EL2:-false}"
 KERN_SRC_BASE="${KERN_SRC_BASE:-${KERN_SRC:-}}"
 KERN_OUT="${KERN_OUT:-}"
@@ -38,11 +40,15 @@ mkdir -p \
   "$RPM_TOPDIR/SOURCES" \
   "$RPM_TOPDIR/SPECS" \
   "$RPM_TOPDIR/SRPMS"
+trap 'report_kernel_disk_usage "RPM packaging exit"' EXIT
+report_kernel_disk_usage "before RPM packaging"
 
 prepare_tarball() {
   local tar_name="$1"
   local source_dir="$2"
   tar -C "$source_dir" -czf "$RPM_TOPDIR/SOURCES/$tar_name" .
+  # rpmbuild consumes the archive; release its staging copy before extraction.
+  rm -rf "$source_dir"
 }
 
 render_spec_template() {
@@ -67,6 +73,7 @@ build_variant_rpms() {
   local krel="$5"
   local dtb_name="$6"
 
+  report_kernel_disk_usage "before staging $krel"
   [[ "$(cat "$out_dir/gaokun-distro")" == "fedora" ]] || {
     echo "Refusing to package a kernel built for a different distribution" >&2; exit 1;
   }
@@ -109,7 +116,9 @@ add_drivers+=" btrfs nvme phy-qcom-qmp-pcie phy-qcom-qmp-combo phy-qcom-qmp-usb 
 install_items+=" /lib/firmware/qcom/a660_sqe.fw /lib/firmware/qcom/a660_gmu.bin /lib/firmware/qcom/sc8280xp/HUAWEI/gaokun3/qcdxkmsuc8280.mbn /lib/firmware/qcom/sc8280xp/HUAWEI/gaokun3/qcslpi8280.mbn /lib/firmware/qcom/sc8280xp/HUAWEI/gaokun3/qcadsp8280.mbn /lib/firmware/qcom/sc8280xp/HUAWEI/gaokun3/qccdsp8280.mbn /lib/firmware/qcom/sc8280xp/SC8280XP-HUAWEI-GAOKUN3-tplg.bin /lib/firmware/qcom/sc8280xp/HUAWEI/gaokun3/audioreach-tplg.bin "
 EOF
 
-  make -C "$src_dir" O="$out_dir" ARCH=arm64 INSTALL_MOD_PATH="$modules_raw_stage" modules_install
+  # Kbuild strips DWARF before signing, preserving BTF and valid signatures.
+  make -C "$src_dir" O="$out_dir" ARCH=arm64 \
+    INSTALL_MOD_PATH="$modules_raw_stage" INSTALL_MOD_STRIP=1 modules_install
   mv "$modules_raw_stage/lib/modules" "$modules_stage/usr/lib/"
   rm -rf "$modules_raw_stage"
   install -Dm644 "$out_dir/arch/arm64/boot/dts/qcom/$dtb_name" \
@@ -121,13 +130,7 @@ EOF
   rm -f "$modules_stage/lib/modules"
   rmdir "$modules_stage/lib"
 
-  rsync -a --delete --exclude '.git' "$src_dir/" "$devel_tree/"
-  rsync -a "$out_dir/" "$devel_tree/"
-  install -Dm644 "$src_dir/Makefile" "$devel_tree/Makefile"
-  find "$devel_tree" -type f \
-    \( -name '*.o' -o -name '*.ko' -o -name '*.a' -o -name '*.cmd' -o -name '*.mod' -o -name '*.mod.c' \) \
-    -delete
-  find "$devel_tree" -type l \( -name build -o -name source \) -delete
+  stage_kernel_devel "$src_dir" "$out_dir" "$devel_tree"
   ln -s "../../../src/kernels/$krel" "$devel_stage/usr/lib/modules/$krel/build"
   ln -s "../../../src/kernels/$krel" "$devel_stage/usr/lib/modules/$krel/source"
 
@@ -177,9 +180,10 @@ EOF
   local modules_rpm_name="$(basename "$modules_rpm_path")"
   local devel_rpm_name="$(basename "$devel_rpm_path")"
 
-  cp "$kernel_rpm_path" "$ARTIFACT_DIR/$kernel_rpm_name"
-  cp "$modules_rpm_path" "$ARTIFACT_DIR/$modules_rpm_name"
-  cp "$devel_rpm_path" "$ARTIFACT_DIR/$devel_rpm_name"
+  mv "$kernel_rpm_path" "$ARTIFACT_DIR/$kernel_rpm_name"
+  mv "$modules_rpm_path" "$ARTIFACT_DIR/$modules_rpm_name"
+  mv "$devel_rpm_path" "$ARTIFACT_DIR/$devel_rpm_name"
+  report_kernel_disk_usage "packaged $krel"
 
   printf -v "KREL_${variant_key^^}" '%s' "$krel"
   printf -v "KERNEL_RPM_${variant_key^^}" '%s' "$kernel_rpm_name"
@@ -208,10 +212,11 @@ build_firmware_rpm() {
   local firmware_rpm_path
   firmware_rpm_path="$(find "$RPM_TOPDIR/RPMS" -name 'linux-firmware-gaokun3-*.rpm' -print -quit)"
   FIRMWARE_RPM="$(basename "$firmware_rpm_path")"
-  cp "$firmware_rpm_path" "$ARTIFACT_DIR/$FIRMWARE_RPM"
+  mv "$firmware_rpm_path" "$ARTIFACT_DIR/$FIRMWARE_RPM"
 }
 
 rpmbuild_common_args=(
+  --clean --rmsource
   --define "_topdir $RPM_TOPDIR"
   --define "_binary_payload $RPM_PAYLOAD_MACRO"
   --define "_source_payload $RPM_PAYLOAD_MACRO"

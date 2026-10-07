@@ -7,6 +7,8 @@ set -euo pipefail
 : "${KERNEL_TAG:?missing KERNEL_TAG}"
 : "${PACKAGE_RELEASE_TAG:?missing PACKAGE_RELEASE_TAG}"
 
+source "$GAOKUN_DIR/scripts/ci/lib/kernel_package.sh"
+
 BUILD_EL2="${BUILD_EL2:-false}"
 KERN_SRC_BASE="${KERN_SRC_BASE:-${KERN_SRC:-}}"
 KERN_OUT="${KERN_OUT:-}"
@@ -29,6 +31,8 @@ FIRMWARE_DEB_VERSION="${FIRMWARE_DEB_VERSION:-$(date -u +%Y%m%d)-1}"
 BUILD_TIME_UTC="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
 mkdir -p "$ARTIFACT_DIR" "$DEB_TOPDIR"
+trap 'report_kernel_disk_usage "DEB packaging exit"' EXIT
+report_kernel_disk_usage "before DEB packaging"
 
 render_template_to_string() {
   local template_path="$1"
@@ -40,7 +44,8 @@ render_template_to_string() {
     shift 2
   done
 
-  sed "${sed_args[@]}" "$template_path"
+  # An explicit empty program also supports templates with no substitutions.
+  sed -e '' "${sed_args[@]}" "$template_path"
 }
 
 build_deb() {
@@ -88,6 +93,7 @@ EOF
   fi
 
   dpkg-deb --build --root-owner-group "$stage_dir" "$DEB_TOPDIR/${pkg_name}_${version}_${arch}.deb"
+  rm -rf "$stage_dir"
 }
 
 build_kernel_variant() {
@@ -98,6 +104,7 @@ build_kernel_variant() {
   local krel="$5"
   local dtb_name="$6"
 
+  report_kernel_disk_usage "before staging $krel"
   [[ "$(cat "$out_dir/gaokun-distro")" == "ubuntu" ]] || {
     echo "Refusing to package a kernel built for a different distribution" >&2; exit 1;
   }
@@ -133,21 +140,14 @@ build_kernel_variant() {
   install -Dm644 "$out_dir/arch/arm64/boot/dts/qcom/$dtb_name" \
     "$image_stage/usr/lib/linux-image-$krel/qcom/$dtb_name"
 
-  make -C "$src_dir" O="$out_dir" ARCH=arm64 INSTALL_MOD_PATH="$modules_raw_stage" modules_install
+  # Kbuild strips DWARF before signing, preserving BTF and valid signatures.
+  make -C "$src_dir" O="$out_dir" ARCH=arm64 \
+    INSTALL_MOD_PATH="$modules_raw_stage" INSTALL_MOD_STRIP=1 modules_install
   mv "$modules_raw_stage/lib/modules" "$modules_stage/lib/"
   rm -rf "$modules_raw_stage"
   rm -f "$modules_stage/lib/modules/$krel/build" \
         "$modules_stage/lib/modules/$krel/source"
   depmod -b "$modules_stage" -a "$krel"
-
-  rsync -a --delete --exclude '.git' "$src_dir/" "$headers_tree/"
-  rsync -a "$out_dir/" "$headers_tree/"
-  find "$headers_tree" -type f \
-    \( -name '*.o' -o -name '*.ko' -o -name '*.a' -o -name '*.cmd' -o -name '*.mod' -o -name '*.mod.c' \) \
-    -delete
-  find "$headers_tree" -type l \( -name build -o -name source \) -delete
-  ln -s "../../../src/linux-headers-$krel" "$headers_stage/lib/modules/$krel/build"
-  ln -s "../../../src/linux-headers-$krel" "$headers_stage/lib/modules/$krel/source"
 
   local image_description
   image_description="$(
@@ -196,6 +196,11 @@ build_kernel_variant() {
     "$modules_postinst" \
     "$modules_postrm"
 
+  # Image/modules staging has been released before copying the headers tree.
+  stage_kernel_devel "$src_dir" "$out_dir" "$headers_tree"
+  ln -s "../../../src/linux-headers-$krel" "$headers_stage/lib/modules/$krel/build"
+  ln -s "../../../src/linux-headers-$krel" "$headers_stage/lib/modules/$krel/source"
+
   local headers_description
   headers_description="$(
     render_template_to_string \
@@ -212,9 +217,10 @@ build_kernel_variant() {
   local modules_deb="${modules_pkg}_${deb_version}_${DEB_ARCH}.deb"
   local headers_deb="${headers_pkg}_${deb_version}_${DEB_ARCH}.deb"
 
-  cp "$DEB_TOPDIR/$image_deb" "$ARTIFACT_DIR/"
-  cp "$DEB_TOPDIR/$modules_deb" "$ARTIFACT_DIR/"
-  cp "$DEB_TOPDIR/$headers_deb" "$ARTIFACT_DIR/"
+  mv "$DEB_TOPDIR/$image_deb" "$ARTIFACT_DIR/"
+  mv "$DEB_TOPDIR/$modules_deb" "$ARTIFACT_DIR/"
+  mv "$DEB_TOPDIR/$headers_deb" "$ARTIFACT_DIR/"
+  report_kernel_disk_usage "packaged $krel"
 
   printf -v "KREL_${variant_key^^}" '%s' "$krel"
   printf -v "IMAGE_DEB_${variant_key^^}" '%s' "$image_deb"
@@ -242,7 +248,7 @@ build_firmware_package() {
     "linux-firmware-gaokun3" "$firmware_stage" "$FIRMWARE_DEB_VERSION" \
     "$firmware_description" "" "all"
 
-  cp "$DEB_TOPDIR/$firmware_deb" "$ARTIFACT_DIR/"
+  mv "$DEB_TOPDIR/$firmware_deb" "$ARTIFACT_DIR/"
   FIRMWARE_DEB="$firmware_deb"
 }
 

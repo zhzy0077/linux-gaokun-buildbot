@@ -101,10 +101,11 @@ jobs:
             gaokun3-packages-deb-ccache-${{ env.KERNEL_TAG }}-
             gaokun3-packages-deb-ccache-
 
-      - name: Check kernel patch series
+      - name: Check kernel patches, config and packaging
         run: |
           GAOKUN_KERNEL_SRC="$KERN_SRC" python3 tests/test_kernel_patches.py -v
           python3 -m unittest discover -s tests -p test_kernel_distro.py -v
+          python3 -m unittest discover -s tests -p test_kernel_packaging.py -v
 
       - name: Build gaokun kernel variants
         run: |

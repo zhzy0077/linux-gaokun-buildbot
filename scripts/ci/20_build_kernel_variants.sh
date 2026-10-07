@@ -7,6 +7,8 @@ set -euo pipefail
 : "${KERNEL_DISTRO:?set KERNEL_DISTRO to fedora or ubuntu}"
 case "$KERNEL_DISTRO" in fedora|ubuntu) ;; *) echo "Invalid KERNEL_DISTRO" >&2; exit 1 ;; esac
 
+source "$GAOKUN_DIR/scripts/ci/lib/kernel_package.sh"
+
 KERN_OUT="${KERN_OUT:-$WORKDIR/kernel-out}"
 KERN_SRC_BASE="${KERN_SRC_BASE:-$WORKDIR/mainline-linux-base}"
 KERN_SRC_EL2="${KERN_SRC_EL2:-$KERN_SRC}"
@@ -57,6 +59,8 @@ snapshot_tree() {
 }
 
 mkdir -p "$WORKDIR"
+trap 'report_kernel_disk_usage "kernel build exit"' EXIT
+report_kernel_disk_usage "before kernel builds"
 
 configure_git_identity "$KERN_SRC"
 git -C "$KERN_SRC" am "$GAOKUN_DIR"/patches/upstream/*.patch
