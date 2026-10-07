@@ -98,7 +98,13 @@ build_kernel_variant() {
   local krel="$5"
   local dtb_name="$6"
 
-  local deb_version="${krel//-/\~}-1"
+  [[ "$(cat "$out_dir/gaokun-distro")" == "ubuntu" ]] || {
+    echo "Refusing to package a kernel built for a different distribution" >&2; exit 1;
+  }
+  python3 "$GAOKUN_DIR/tools/boot/check-kernel-config.py" "$out_dir/.config" \
+    "$GAOKUN_DIR/defconfig/distro/common.config" "$GAOKUN_DIR/defconfig/distro/ubuntu.config"
+
+  local deb_version="${krel//-/\~}-2"
   local image_pkg="linux-image-gaokun3${pkg_suffix}"
   local modules_pkg="linux-modules-gaokun3${pkg_suffix}"
   local headers_pkg="linux-headers-gaokun3${pkg_suffix}"
@@ -279,6 +285,7 @@ fi
 cat >"$ARTIFACT_DIR/package-manifest.json" <<EOF
 {
   "package_release_tag": "${PACKAGE_RELEASE_TAG}",
+  "kernel_distro": "ubuntu",
   "kernel_tag": "${KERNEL_TAG}",
   "build_el2": ${BUILD_EL2},
   "built_at_utc": "${BUILD_TIME_UTC}",

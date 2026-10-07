@@ -4,7 +4,7 @@
 
 Name:           @PKG_NAME@
 Version:        @KREL_VERSION@
-Release:        8%{?dist}
+Release:        9%{?dist}
 Summary:        Development files for the gaokun3 kernel
 License:        GPL-2.0-only
 ExclusiveArch:  aarch64
@@ -31,7 +31,8 @@ cp -a usr %{buildroot}/
 /usr/lib/modules/@KREL@/source
 
 %changelog
-* Tue Oct 06 2026 Gaokun buildbot - @KREL_VERSION@-8
+* Wed Oct 07 2026 Gaokun buildbot - @KREL_VERSION@-9
+- Apply Fedora kernel policy and verify the final distribution configuration
 - Add opt-in QSEE fTPM validation with HLOS sharing for firmware control memory
 - Package matching aarch64 kernel development files for Gaokun
 

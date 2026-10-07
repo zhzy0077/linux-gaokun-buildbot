@@ -67,6 +67,12 @@ build_variant_rpms() {
   local krel="$5"
   local dtb_name="$6"
 
+  [[ "$(cat "$out_dir/gaokun-distro")" == "fedora" ]] || {
+    echo "Refusing to package a kernel built for a different distribution" >&2; exit 1;
+  }
+  python3 "$GAOKUN_DIR/tools/boot/check-kernel-config.py" "$out_dir/.config" \
+    "$GAOKUN_DIR/defconfig/distro/common.config" "$GAOKUN_DIR/defconfig/distro/fedora.config"
+
   local kernel_pkg="kernel-gaokun3${pkg_suffix}"
   local modules_pkg="kernel-modules-gaokun3${pkg_suffix}"
   local devel_pkg="kernel-devel-gaokun3${pkg_suffix}"
@@ -252,6 +258,7 @@ fi
 cat >"$ARTIFACT_DIR/package-manifest.json" <<EOF
 {
   "package_release_tag": "${PACKAGE_RELEASE_TAG}",
+  "kernel_distro": "fedora",
   "kernel_tag": "${KERNEL_TAG}",
   "build_el2": ${BUILD_EL2},
   "built_at_utc": "${BUILD_TIME_UTC}",

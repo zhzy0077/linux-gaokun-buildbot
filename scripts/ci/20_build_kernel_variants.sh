@@ -4,6 +4,8 @@ set -euo pipefail
 : "${GAOKUN_DIR:?missing GAOKUN_DIR}"
 : "${WORKDIR:?missing WORKDIR}"
 : "${KERN_SRC:?missing KERN_SRC}"
+: "${KERNEL_DISTRO:?set KERNEL_DISTRO to fedora or ubuntu}"
+case "$KERNEL_DISTRO" in fedora|ubuntu) ;; *) echo "Invalid KERNEL_DISTRO" >&2; exit 1 ;; esac
 
 KERN_OUT="${KERN_OUT:-$WORKDIR/kernel-out}"
 KERN_SRC_BASE="${KERN_SRC_BASE:-$WORKDIR/mainline-linux-base}"
@@ -39,13 +41,8 @@ build_variant() {
   mkdir -p "$out_dir"
 
   unset KCONFIG_CONFIG
-  make -C "$src_dir" O="$out_dir" ARCH=arm64 CROSS_COMPILE="$CROSS_COMPILE" gaokun3_defconfig
-
-  if [[ -n "$localversion" ]]; then
-    "$src_dir"/scripts/config --file "$out_dir/.config" --set-str LOCALVERSION "$localversion"
-  fi
-
-  make -C "$src_dir" O="$out_dir" ARCH=arm64 CROSS_COMPILE="$CROSS_COMPILE" olddefconfig
+  CROSS_COMPILE="$CROSS_COMPILE" bash "$GAOKUN_DIR/scripts/ci/configure_kernel.sh" \
+    "$src_dir" "$out_dir" "$KERNEL_DISTRO" "$localversion"
   make -C "$src_dir" O="$out_dir" ARCH=arm64 CROSS_COMPILE="$CROSS_COMPILE" -j"$(nproc)"
   make -C "$src_dir" O="$out_dir" ARCH=arm64 CROSS_COMPILE="$CROSS_COMPILE" modules_prepare
 }
