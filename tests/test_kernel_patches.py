@@ -41,6 +41,9 @@ class KernelPatchTests(unittest.TestCase):
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(source, target)
         cls.git('init', '-q')
+        # Detached housekeeping must not outlive this disposable repository.
+        cls.git('config', 'maintenance.auto', 'false')
+        cls.git('config', 'gc.auto', '0')
         cls.git('config', 'user.name', 'Patch regression test')
         cls.git('config', 'user.email', 'test@localhost')
         cls.git('config', 'commit.gpgsign', 'false')
@@ -58,6 +61,12 @@ class KernelPatchTests(unittest.TestCase):
         if result.returncode:
             raise AssertionError(f'git {args[0]} failed:\n{result.stdout}{result.stderr}')
         return result.stdout
+
+    def test_automatic_git_housekeeping_is_disabled(self):
+        self.assertEqual(self.git('config', '--local', '--bool', '--get',
+                                  'maintenance.auto').strip(), 'false')
+        self.assertEqual(self.git('config', '--local', '--int', '--get',
+                                  'gc.auto').strip(), '0')
 
     @unittest.skipUnless(shutil.which('cc'), 'native C compiler required')
     def test_bonded_pll_can_be_programmed_before_phy_enable(self):
