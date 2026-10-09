@@ -22,7 +22,10 @@ class InstallerTests(unittest.TestCase):
             self.assertFalse(any(line.startswith(directive) for line in ks.splitlines()))
         for forbidden in ('test-target.json', 'storage.ks', '--exclude-weakdeps', 'prepare-target', ' finalize'):
             self.assertNotIn(forbidden, ks)
-        self.assertIn('file:///opt/installer/repo', ks)
+        self.assertIn('repo --name=gaokun --baseurl=file:///opt/installer/repo', ks)
+        self.assertIn('url --metalink=https://mirrors.fedoraproject.org/metalink?repo=fedora-44&arch=aarch64', ks)
+        self.assertIn('repo --name=updates --metalink=https://mirrors.fedoraproject.org/metalink?repo=updates-released-f44&arch=aarch64', ks)
+        self.assertNotIn('url --url=file:', ks)
         for package in ('kernel-gaokun3-el2', 'kernel-modules-gaokun3-el2', 'gaokun3-platform',
                         'linux-firmware-gaokun3', 'sdubby', 'systemd-pam', 'dbus-daemon', 'cracklib-dicts'):
             self.assertIn(package, ks.splitlines())

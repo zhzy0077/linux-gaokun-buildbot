@@ -14,10 +14,10 @@ on:
         required: false
         default: ''
       image_size:
-        description: Uncompressed USB image size (14G fits typical 16 GB media)
+        description: Uncompressed USB image size (6G fits typical 8 GB media)
         type: string
         required: true
-        default: 14G
+        default: 6G
 
 permissions:
   contents: write
@@ -49,7 +49,7 @@ jobs:
           python3 tools/installer/download-rpms.py \
             --repository "$GITHUB_REPOSITORY" --tag "$PACKAGE_RELEASE_TAG" --kernel-tag "$KERNEL_TAG" \
             --output "$RUNNER_TEMP/gaokun-rpms"
-      - name: Build offline installer image
+      - name: Build network installer image
         run: |
           df -h "$RUNNER_TEMP"
           mkdir -p "$RUNNER_TEMP/gaokun-installer" "$RUNNER_TEMP/gaokun-artifacts"
@@ -77,3 +77,42 @@ jobs:
             ${{ runner.temp }}/gaokun-artifacts/SHA256SUMS
             ${{ runner.temp }}/gaokun-artifacts/media-rpm-manifest.json
             ${{ runner.temp }}/gaokun-artifacts/README.txt
+      - name: Prepare release
+        id: release
+        run: |
+          cd "$RUNNER_TEMP/gaokun-artifacts"
+          # GitHub rejects release assets of 2 GiB or more.
+          for file in *.img.xz SHA256SUMS media-rpm-manifest.json; do
+            size=$(stat -c %s "$file")
+            [[ $size -lt 2147483648 ]] || { echo "$file is $size bytes, over the release asset limit" >&2; exit 1; }
+          done
+          image=$(ls *.img.xz)
+          tag="fedora${FEDORA_RELEASE}-gaokun3-installer-${KERNEL_TAG//[^A-Za-z0-9._-]/-}-el2-$(date -u +%Y%m%d%H%M%S)"
+          {
+            echo '## Fedora Linux 44 network installer for Gaokun3'
+            echo
+            echo "- Kernel tag: \`${KERNEL_TAG}\` (EL2), packages from \`${PACKAGE_RELEASE_TAG}\`"
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Image: \`${image}\` ($(numfmt --to=iec-i --suffix=B "$(stat -c %s "$image")"), ${IMAGE_SIZE} uncompressed)"
+            echo
+            echo '## Install'
+            echo
+            echo '1. Verify with `sha256sum -c SHA256SUMS`, then write the image to a USB drive:'
+            echo '   Rufus on Windows, or `xz -dc '"$image"' | sudo dd of=/dev/sdX bs=4M conv=fsync status=progress` on Linux.'
+            echo '2. Disable Secure Boot in the firmware setup (F2), then boot the USB drive from the boot menu (F12).'
+            echo '3. Connect to Wi-Fi when asked. Anaconda downloads Fedora packages from the mirrors;'
+            echo '   the Gaokun kernel, firmware and platform packages come from the USB drive.'
+            echo
+            echo 'Details: [tools/installer/README.md](https://github.com/'"$GITHUB_REPOSITORY"'/blob/'"$GITHUB_SHA"'/tools/installer/README.md)'
+          } > release-notes.md
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2.6.1
+        with:
+          tag_name: ${{ steps.release.outputs.tag }}
+          name: Fedora Linux ${{ env.FEDORA_RELEASE }} - gaokun3 - Network installer - ${{ env.KERNEL_TAG }} + EL2
+          body_path: ${{ runner.temp }}/gaokun-artifacts/release-notes.md
+          files: |
+            ${{ runner.temp }}/gaokun-artifacts/*.img.xz
+            ${{ runner.temp }}/gaokun-artifacts/SHA256SUMS
+            ${{ runner.temp }}/gaokun-artifacts/media-rpm-manifest.json

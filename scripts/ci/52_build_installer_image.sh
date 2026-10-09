@@ -8,7 +8,7 @@ set -euo pipefail
 [[ $(id -u) == 0 && $(uname -m) == aarch64 ]] || { echo 'Use a dedicated root aarch64 builder' >&2; exit 1; }
 FEDORA_RELEASE="${FEDORA_RELEASE:-44}"
 [[ $FEDORA_RELEASE == 44 ]] || exit 1
-IMAGE_SIZE="${IMAGE_SIZE:-14G}"
+IMAGE_SIZE="${IMAGE_SIZE:-6G}"
 [[ $IMAGE_SIZE =~ ^[1-9][0-9]*[GM]$ ]] || exit 1
 mkdir -p "$WORKDIR" "$ARTIFACT_DIR"
 WORKDIR=$(realpath "$WORKDIR")
@@ -106,4 +106,4 @@ rmdir "$MNT"
 trap - EXIT
 xz -T2 -3 --keep "$IMAGE"
 (cd "$ARTIFACT_DIR"; sha256sum "$(basename "$IMAGE").xz" > SHA256SUMS)
-printf 'Burn the decompressed .img to a USB drive. Boot it and use Anaconda to select the installation target.\n' > "$ARTIFACT_DIR/README.txt"
+printf 'Write the image to a USB drive. Boot it, connect to a network and use Anaconda to select the installation target.\n' > "$ARTIFACT_DIR/README.txt"

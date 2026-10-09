@@ -1,10 +1,17 @@
-# Fedora 44 Gaokun installer USB image
+# Fedora 44 Gaokun network installer USB image
 
 The installer is a writable GPT/FAT/Btrfs `.img`, compressed as `.img.xz` for
-transport. Burn the decompressed image to a USB drive and boot it on Gaokun3.
-The graphical Anaconda installer installs a fresh Workstation system from the
-bundled offline RPM repository. The default kernel payload is EL2. UEFI Secure Boot must be disabled for the
-unsigned Gaokun boot payloads.
+transport and published as a single GitHub release asset (under 2 GiB). Write it
+to a USB drive and boot it on Gaokun3. The graphical Anaconda installer installs
+a fresh Workstation system: Fedora packages come from the Fedora 44 and updates
+mirrors, and the four Gaokun RPMs come from a local repository on the media. The
+default kernel payload is EL2. UEFI Secure Boot must be disabled for the unsigned
+Gaokun boot payloads.
+
+The live root only carries what the installer session needs: the Gaokun kernel,
+firmware and platform packages, GNOME Shell and NetworkManager for Wi-Fi setup,
+storage/boot tools and Anaconda Web UI with Firefox (`LIVE_PACKAGES` in
+`build-media.py`). It does not contain the Workstation target payload.
 
 ## Ownership
 
@@ -37,8 +44,9 @@ retains headroom. It does not delete old operating-system files to make room.
 
 Use the **Build Installer - Fedora Gaokun3 USB image** workflow. It first builds
 a matching RPM release, verifies release asset digests, then composes on a native
-aarch64 runner. The result is an Actions artifact containing `.img.xz`, checksums
-and the complete target RPM inventory. The ordinary desktop-image workflow is
+aarch64 runner. The result is an Actions artifact and a GitHub release containing
+`.img.xz`, checksums and the Gaokun RPM inventory. The release step fails if an
+asset reaches GitHub's 2 GiB limit. The ordinary desktop-image workflow is
 unchanged. For image-only retries, `package_release_tag` can reuse the exact
 successful RPM release; its kernel tag must match the requested image version.
 
@@ -51,22 +59,26 @@ python3 tools/installer/download-rpms.py --repository OWNER/linux-gaokun-buildbo
 
 sudo env GAOKUN_DIR="$PWD" WORKDIR=/build/installer-work \
   PACKAGE_RPMS_DIR=/build/gaokun-rpms ARTIFACT_DIR=/build/artifacts \
-  IMAGE_SIZE=14G bash scripts/ci/52_build_installer_image.sh
+  IMAGE_SIZE=6G bash scripts/ci/52_build_installer_image.sh
 ```
 
 Install the build dependencies listed in the workflow first. Container builders
 need loop/mount support and `/dev` access; use a dedicated builder. The script
 formats only its newly-created regular image through the loop device it allocated,
 uses an isolated mount directory and refuses to overwrite an existing image.
-A 14 GiB image needs a USB drive with at least that actual byte capacity.
+A 6 GiB image needs a USB drive with at least that actual byte capacity (8 GB media).
 
-`build-media.py` solves Workstation including weak dependencies from a new
-installroot, adds the four local Gaokun RPMs, preserves Fedora comps metadata and
-checks the target transaction using only the local repository. Installer-only
-packages and policies stay in the USB root; they are not target packages.
+`build-media.py` checks that the Kickstart target selection, including weak
+dependencies, resolves against the Fedora repositories plus the four local Gaokun
+RPMs, then installs `LIVE_PACKAGES` into the USB root. Installer-only packages and
+policies stay in the USB root; they are not target packages. The target is
+resolved again against the mirrors at install time, so it receives current
+Fedora updates.
 
 The USB uses a password-locked `installer` account with automatic GNOME login.
-Anaconda Web UI opens automatically; the desktop icon uses the same launcher,
+Installation needs a network connection. When NetworkManager is not connected
+within 10 seconds, the launcher opens GNOME Wi-Fi settings and waits up to 15
+minutes before starting Anaconda. Anaconda Web UI opens automatically; the desktop icon uses the same launcher,
 with background media validation and a single-instance lock. DNF Anaconda owns
 the browser lifecycle; the launcher does not invoke Live-copy `liveinst`, which
 would open a second viewer. The configured browser launcher uses Fedora's
@@ -86,7 +98,7 @@ GAOKUN_UPSTREAM_CPUINFO=/path/to/pristine-linux-7.2.9/arch/arm64/kernel/cpuinfo.
 python3 -B -m unittest discover -s tests -v
 ```
 
-The builder validates the rendered Fedora 44 Kickstart and offline package solve.
+The builder validates the rendered Fedora 44 Kickstart and the target package solve.
 Post-install validation checks the selected root/LUKS arguments, kernel/DTB hashes,
 initramfs contents and the seven bootloader/EL2 EFI assets. It accepts an
 unencrypted root when that is what the user chose.

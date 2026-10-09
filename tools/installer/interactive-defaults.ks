@@ -1,6 +1,9 @@
 # Loaded as interactive defaults, without --kickstart or --liveinst.
 graphical
-url --url=file:///opt/installer/repo
+# Network install: Fedora packages come from the mirrors, Gaokun packages from the media.
+url --metalink=https://mirrors.fedoraproject.org/metalink?repo=fedora-44&arch=aarch64
+repo --name=updates --metalink=https://mirrors.fedoraproject.org/metalink?repo=updates-released-f44&arch=aarch64
+repo --name=gaokun --baseurl=file:///opt/installer/repo
 # Filled by the media builder from the RPM-owned platform-cmdline file.
 bootloader --sdboot --append="@PLATFORM_CMDLINE@"
 rootpw --lock

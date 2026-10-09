@@ -1,4 +1,4 @@
-"""Static media composition contracts and offline package selection."""
+"""Static media composition contracts and network-install package selection."""
 import importlib.util
 from pathlib import Path
 import unittest
@@ -10,7 +10,7 @@ media=importlib.util.module_from_spec(spec);spec.loader.exec_module(media)
 
 
 class InstallerMediaTests(unittest.TestCase):
-    def test_offline_target_selection_uses_four_gaokun_packages(self):
+    def test_target_selection_uses_four_gaokun_packages(self):
         packages,exclude=media.package_selection((ROOT/'tools/installer/interactive-defaults.ks').read_text())
         self.assertIn('@^workstation-product-environment',packages)
         for name in ('kernel-gaokun3-el2','kernel-modules-gaokun3-el2','linux-firmware-gaokun3','gaokun3-platform'):
@@ -18,6 +18,26 @@ class InstallerMediaTests(unittest.TestCase):
         self.assertNotIn('anaconda-live',packages)
         self.assertIn('kernel-core',exclude)
         self.assertNotIn('sdubby',exclude)
+
+    def test_live_root_carries_installer_session_without_target_payload(self):
+        live=media.LIVE_PACKAGES
+        self.assertFalse([p for p in live if p.startswith('@')])
+        for name in ('kernel-gaokun3-el2','kernel-modules-gaokun3-el2','linux-firmware-gaokun3','gaokun3-platform',
+                     'anaconda-webui','anaconda-live','firefox','gdm','gnome-shell','NetworkManager-wifi',
+                     'selinux-policy-targeted','systemd-boot-unsigned','btrfs-progs'):
+            self.assertIn(name,live)
+        source=(ROOT/'tools/installer/build-media.py').read_text()
+        self.assertIn("'install', *LIVE_PACKAGES)",source)
+        self.assertIn("'install', '--downloadonly', *packages)",source)
+        self.assertNotIn('offline',source)
+
+    def test_network_install_waits_for_a_connection(self):
+        launcher=(ROOT/'tools/installer/gaokun-install').read_text()
+        self.assertLess(launcher.index('nm-online -q -t 10'),launcher.index('exec pkexec'))
+        self.assertIn('gnome-control-center wifi &',launcher)
+        workflow=(ROOT/'.github/workflows/gaokun3-installer-image.yml').read_text()
+        self.assertIn('-lt 2147483648',workflow)
+        self.assertIn('softprops/action-gh-release',workflow)
 
     def test_hardware_boot_options_are_rendered_from_one_source(self):
         template=(ROOT/'tools/installer/interactive-defaults.ks').read_text()

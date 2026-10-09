@@ -4,4 +4,9 @@ if [[ $(uname -m) != aarch64 || ! -d /sys/firmware/efi ]]; then
     echo 'Start the installer from the Gaokun UEFI installation media.' >&2
     exit 1
 fi
+# Fedora packages are downloaded during installation; open Wi-Fi settings until connected.
+if ! nm-online -q -t 10; then
+    gnome-control-center wifi &
+    nm-online -q -t 900 || { echo 'Connect to a network, then start the installer again.' >&2; exit 1; }
+fi
 exec pkexec /usr/local/libexec/gaokun-install-backend
