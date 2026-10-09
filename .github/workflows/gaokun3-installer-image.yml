@@ -110,6 +110,8 @@ jobs:
         uses: softprops/action-gh-release@v2.6.1
         with:
           tag_name: ${{ steps.release.outputs.tag }}
+          # Tag the commit that built the image, not the default branch.
+          target_commitish: ${{ github.sha }}
           name: Fedora Linux ${{ env.FEDORA_RELEASE }} - gaokun3 - Network installer - ${{ env.KERNEL_TAG }} + EL2
           body_path: ${{ runner.temp }}/gaokun-artifacts/release-notes.md
           files: |
