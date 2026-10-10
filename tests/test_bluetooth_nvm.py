@@ -54,6 +54,20 @@ class NvmTests(unittest.TestCase):
                 (Path(directory)/name).write_bytes(sample())
             self.assertEqual({p.name for p in nvm.iter_nvm_files()}, set(names))
 
+    def test_packaged_non_g_nvm_accepts_address_preparation(self):
+        original = (ROOT / 'firmware/qca/wcnhpnv21.bin').read_bytes()
+        self.assertIn(b'BTFW.HSP.2.1.0-00660-USB_UART_PATCHZ-6', original)
+        offset = nvm.parse_nvm_find_bdaddr(original)
+        self.assertIsNotNone(offset)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'wcnhpnv21.bin'
+            path.write_bytes(original)
+            desired = nvm.generate_bdaddr('test-device')
+            self.assertTrue(nvm.patch_file(path, desired))
+            self.assertEqual(path.read_bytes(),
+                             original[:offset] + desired[::-1] + original[offset + 6:])
+            self.assertEqual(path.with_name(path.name + '.orig').read_bytes(), original)
+
     def test_rejects_firmware_link_outside_directory(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory); firmware = root/'qca'; firmware.mkdir()

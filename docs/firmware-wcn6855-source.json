@@ -2,6 +2,24 @@
   "firmware_source_package": "linux-firmware-gaokun3-20260512-1.fc44.noarch",
   "added_missing_firmware": [
     {
+      "path": "/usr/lib/firmware/qca/wcnhpnv21.bin",
+      "sha256": "642e3457f0a283881d4ca7b132daed43c917e05e0465d00b6e4c751c73e3bd91",
+      "version": "BTFW.HSP.2.1.0-00660-USB_UART_PATCHZ-6",
+      "source_commit": "1b629c2ee14dd810e503fbb01aa65dae2f8e8327",
+      "source_url": "https://kernel.googlesource.com/pub/scm/linux/kernel/git/firmware/linux-firmware/+/1b629c2ee14dd810e503fbb01aa65dae2f8e8327/qca/wcnhpnv21.bin",
+      "license_files": ["LICENSE.QualcommAtheros_ath10k", "NOTICE.txt"]
+    },
+    {
+      "path": "/usr/lib/firmware/qca/LICENSE.QualcommAtheros_ath10k",
+      "sha256": "337a55102138d7baa143ee4a4c6c91693e0113fece35d380b2a12109e8c23b3f",
+      "source_url": "https://kernel.googlesource.com/pub/scm/linux/kernel/git/firmware/linux-firmware/+/1b629c2ee14dd810e503fbb01aa65dae2f8e8327/LICENSE.QualcommAtheros_ath10k"
+    },
+    {
+      "path": "/usr/lib/firmware/qca/NOTICE.txt",
+      "sha256": "600276e0992c8e5a85300d605fb2db6132ffcf2a21ddcfd0e8566a19e0f491c3",
+      "source_url": "https://kernel.googlesource.com/pub/scm/linux/kernel/git/firmware/linux-firmware/+/1b629c2ee14dd810e503fbb01aa65dae2f8e8327/qca/NOTICE.txt"
+    },
+    {
       "path": "/usr/lib/firmware/qca/hpbtfw21.tlv",
       "sha256": "a911f66a137ec8b9e65f90942e1c21ea2604734a88e486519b77e750d0fc20d2"
     },

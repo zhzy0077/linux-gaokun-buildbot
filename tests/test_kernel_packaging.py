@@ -181,6 +181,8 @@ class KernelPackagingTests(unittest.TestCase):
         put(repo / 'tools/boot/check-kernel-config.py', '# Config validation has its own tests.\n')
         for vendor in ('ath11k', 'qca', 'qcom'):
             put(repo / 'firmware' / vendor / 'test.bin')
+        for name in ('wcnhpnv21.bin', 'LICENSE.QualcommAtheros_ath10k', 'NOTICE.txt'):
+            shutil.copy2(ROOT / 'firmware/qca' / name, repo / 'firmware/qca' / name)
         (repo / 'packaging').symlink_to(ROOT / 'packaging', target_is_directory=True)
         put(repo / 'scripts/ci/71_build_platform_rpm.sh',
             'set -eu\n'
@@ -228,11 +230,14 @@ class KernelPackagingTests(unittest.TestCase):
                         self.assertTrue(any(path.endswith(name) for path in event['files']), name)
                     self.assertFalse(any(path.endswith(('.o', '.ko', '.a', '.cmd', '.mod', '.mod.c'))
                                          for path in event['files']))
+                firmware = next(event for event in events
+                                if event.get('stage') == 'linux-firmware-gaokun3')
+                prefix = 'lib' if kind == 'debs' else 'usr/lib'
+                for name in ('wcnhpnv21.bin', 'LICENSE.QualcommAtheros_ath10k', 'NOTICE.txt'):
+                    self.assertIn(f'{prefix}/firmware/qca/{name}', firmware['files'])
                 self.assertEqual(list((work / 'package-buildroots').iterdir()), [])
                 if kind == 'debs':
                     self.assertEqual(list((work / 'debbuild').iterdir()), [])
-                    firmware = next(event for event in events
-                                    if event.get('stage') == 'linux-firmware-gaokun3')
                     description = ROOT / 'packaging/deb/linux-firmware-gaokun3/descriptions/package.in'
                     self.assertIn(description.read_text().strip(), firmware['control'])
                 else:

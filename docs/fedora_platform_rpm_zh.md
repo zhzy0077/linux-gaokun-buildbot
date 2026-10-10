@@ -36,7 +36,9 @@ GDM helper 兼容静态 `gdm` / `Debian-gdm` home，保留已有配置；安装�
 蓝牙 helper 根据本机标识生成稳定地址，在 `hci_uart` 的 modprobe hook 中先准备 NVM，
 再加载驱动。更新使用原子替换并保留原始备份，避免连带修改其他硬链接固件。
 `hci_uart` 留到解锁后的根文件系统加载。补充固件的原始摘要见
-[来源清单](firmware-wcn6855-source.json)。
+[来源清单](firmware-wcn6855-source.json)。固件 RPM Release 3 补入上游
+`qca/wcnhpnv21.bin`（`2.1.0-00660-USB_UART_PATCHZ-6`）及授权文件，
+供非 GlobalFoundries 的 WCN6855 UART 控制器优先加载。
 
 UCM 通过符号链接引用 Fedora 的其余配置，单独替换 Gaokun 选择器。
 PipeWire 和 WirePlumber 的 drop-in 都设置
