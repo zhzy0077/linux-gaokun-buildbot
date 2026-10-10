@@ -124,6 +124,8 @@ int main(void) {
                              (ROOT / 'drivers/touchscreen-hx83121a' / name).read_bytes())
         self.assertEqual((self.tree / 'drivers/char/tpm/tpm_qcom_qsee.c').read_bytes(),
                          (ROOT / 'drivers/tpm-qcom-qsee/tpm_qcom_qsee.c').read_bytes())
+        self.assertEqual((self.tree / 'drivers/usb/typec/ucsi/ucsi_huawei_gaokun.c').read_bytes(),
+                         (ROOT / 'drivers/gaokun-ec/ucsi_huawei_gaokun.c').read_bytes())
         pinctrl = (self.tree / 'drivers/pinctrl/qcom/pinctrl-sc8280xp.c').read_text()
         self.assertNotRegex(pinctrl, r'\{\s*175,\s*237\s*\}')
         self.assertRegex(pinctrl, r'\{\s*174,\s*222\s*\}')

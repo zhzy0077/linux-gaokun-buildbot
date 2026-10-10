@@ -46,7 +46,7 @@ The patch series targets Linux **7.2.9** from the stable tree. CI and local buil
 - `others/0001`: adapted from [whitelewi1-ctrl/matebook-e-go-linux](https://github.com/whitelewi1-ctrl/matebook-e-go-linux) to avoid setting `USE_BDADDR_PROPERTY` when the adapter address is invalid
 - `others/0002`: local change in this repository to enable DSC and allow 60 Hz / 120 Hz switching
 - `others/0003`: adapted from [chiyuki0325/EGoTouchRev-Linux](https://github.com/chiyuki0325/EGoTouchRev-Linux) to add the Himax HX83121A SPI touchscreen driver
-- `others/0004`: adapted from [TheUnknownThing/linux-gaokun](https://github.com/TheUnknownThing/linux-gaokun) to improve UCSI handling and module wiring for the Type-C path
+- `others/0004`: local upstream-based fix for Gaokun UCSI initialization recovery and USB-C DisplayPort state synchronization; see [USB-C DisplayPort recovery](docs/usb-c-displayport.md)
 - `others/0009`, `others/0010` and the rear-camera DTS wiring: adapted from [vahiru/gaokun-android](https://github.com/vahiru/gaokun-android) for the OV13B10 variant, device-tree matching, shared camera/display rail sequencing and camera clock parking; see [camera support and validation](docs/camera_support.md)
 - `media/*`: adapted from the [jhovold/linux](https://github.com/jhovold/linux/commits/wip/sc8280xp-6.16) to add SC8280XP Venus support
 - `0099`: local patch in this repository to import the current DTS files and `gaokun3_defconfig`

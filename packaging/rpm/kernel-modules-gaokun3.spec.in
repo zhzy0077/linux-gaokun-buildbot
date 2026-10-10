@@ -3,7 +3,7 @@
 
 Name:           @PKG_NAME@
 Version:        @KREL_VERSION@
-Release:        10%{?dist}
+Release:        11%{?dist}
 Summary:        Kernel modules for the gaokun3 kernel
 License:        GPL-2.0-only
 ExclusiveArch:  aarch64
@@ -33,6 +33,10 @@ cp -a usr %{buildroot}/
 /usr/lib/modules/@KREL@
 
 %changelog
+* Sat Oct 10 2026 Gaokun buildbot - @KREL_VERSION@-11
+- Recover asynchronous Gaokun UCSI initialization without replacing DRM bridges
+- Replay all Type-C port states and process USB/DP events outside the EC IRQ thread
+
 * Wed Oct 07 2026 Gaokun buildbot - @KREL_VERSION@-10
 - Start from the pinned Fedora arm64 configuration and retain Gaokun patch requirements
 - Add opt-in QSEE fTPM validation with HLOS sharing for firmware control memory
