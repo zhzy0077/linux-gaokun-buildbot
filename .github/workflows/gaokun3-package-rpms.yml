@@ -77,7 +77,7 @@ jobs:
           set -euxo pipefail
           sudo apt-get update
           sudo apt-get install -y \
-            git make gcc bc bison flex cpio rsync kmod \
+            git make gcc bc bison flex cpio rsync kmod device-tree-compiler \
             libssl-dev libelf-dev libdw-dev dwarves zstd clang libclang-dev lld ccache
 
       - name: Install kernel Rust toolchain

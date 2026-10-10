@@ -120,7 +120,8 @@ and additive topology/UCM files. Release-12's normal DTB does not yet include
 those sound links. Before any test boot, generate the audio DTB from the **new
 kernel's** matching DTB, preserving its EL2 reservations, and reuse the verified
 audio firmware overlay. Do not reuse an old complete DTB over a new kernel's
-board changes.
+board changes. The preparation tool and preserved, non-auto-installed UCM
+payload are documented in [`tools/audio/dp-audio/README.md`](../tools/audio/dp-audio/README.md).
 
 ## Regression checks
 
