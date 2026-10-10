@@ -1,0 +1,123 @@
+Subject: [PATCH] native: Seed CRTC plane assignments from inherited kernel state
+
+Candidate for Mutter 50.5 (c28623c8d29c7b61ec744cdfdbec36f5e7faef1c).
+Gaokun dual-display GDM/session handoff is rejected by drm_atomic_plane_check
+with "switching CRTC directly" for primary planes 43 and 49.
+
+Import the initial plane-to-CRTC bindings into the existing compositor
+assignment tracking. Leave find_unassigned_plane() and is_plane_active()
+unchanged, preserving their runtime reassignment protection. The initial
+snapshot is used only when constructing the CRTC objects, not as an
+immutable runtime ownership constraint.
+
+Related: https://gitlab.gnome.org/GNOME/mutter/-/merge_requests/5055
+Based on the initial ownership snapshot approach proposed by Devanshi Bansal.
+Status: local candidate; not installed or hardware-validated.
+
+diff --git a/src/backends/native/meta-crtc-kms.c b/src/backends/native/meta-crtc-kms.c
+--- a/src/backends/native/meta-crtc-kms.c
++++ b/src/backends/native/meta-crtc-kms.c
+@@ -30,6 +30,7 @@
+ #include "backends/native/meta-kms-device.h"
+ #include "backends/native/meta-kms-mode.h"
+ #include "backends/native/meta-kms-plane.h"
++#include "backends/native/meta-kms-plane-private.h"
+ #include "backends/native/meta-kms-update.h"
+ #include "backends/native/meta-kms.h"
+ #include "backends/native/meta-monitor-manager-native.h"
+@@ -538,6 +539,43 @@
+   return g_object_get_qdata (G_OBJECT (kms_crtc), kms_crtc_crtc_kms_quark);
+ }
+ 
++/* Import the previous DRM owner's bindings once. After startup, the normal
++ * compositor assignment tracking owns this state, including unassignment.
++ */
++static void
++init_crtc_plane_assignments (MetaCrtcKms *crtc_kms)
++{
++  MetaKmsCrtc *kms_crtc = crtc_kms->kms_crtc;
++  MetaKmsDevice *kms_device = meta_kms_crtc_get_device (kms_crtc);
++  GList *l;
++
++  for (l = meta_kms_device_get_planes (kms_device); l; l = l->next)
++    {
++      MetaKmsPlane *plane = l->data;
++
++      if (meta_kms_plane_get_initial_crtc_id (plane) !=
++          meta_kms_crtc_get_id (kms_crtc))
++        continue;
++
++      if (!meta_kms_plane_is_usable_with (plane, kms_crtc))
++        continue;
++
++      switch (meta_kms_plane_get_plane_type (plane))
++        {
++        case META_KMS_PLANE_TYPE_PRIMARY:
++          if (!crtc_kms->assigned_primary_plane)
++            crtc_kms->assigned_primary_plane = plane;
++          break;
++        case META_KMS_PLANE_TYPE_CURSOR:
++          if (!crtc_kms->assigned_cursor_plane)
++            crtc_kms->assigned_cursor_plane = plane;
++          break;
++        default:
++          break;
++        }
++    }
++}
++
+ MetaCrtcKms *
+ meta_crtc_kms_new (MetaGpuKms  *gpu_kms,
+                    MetaKmsCrtc *kms_crtc)
+@@ -552,6 +590,7 @@
+                            NULL);
+ 
+   crtc_kms->kms_crtc = kms_crtc;
++  init_crtc_plane_assignments (crtc_kms);
+ 
+   g_object_set_qdata (G_OBJECT (kms_crtc), kms_crtc_crtc_kms_quark, crtc_kms);
+ 
+diff --git a/src/backends/native/meta-kms-plane-private.h b/src/backends/native/meta-kms-plane-private.h
+--- a/src/backends/native/meta-kms-plane-private.h
++++ b/src/backends/native/meta-kms-plane-private.h
+@@ -84,6 +84,8 @@
+ const char * meta_kms_plane_get_prop_name (MetaKmsPlane     *plane,
+                                            MetaKmsPlaneProp  prop);
+ 
++uint32_t meta_kms_plane_get_initial_crtc_id (MetaKmsPlane *plane);
++
+ uint64_t meta_kms_plane_get_prop_drm_value (MetaKmsPlane     *plane,
+                                             MetaKmsPlaneProp  prop,
+                                             uint64_t          value);
+diff --git a/src/backends/native/meta-kms-plane.c b/src/backends/native/meta-kms-plane.c
+--- a/src/backends/native/meta-kms-plane.c
++++ b/src/backends/native/meta-kms-plane.c
+@@ -46,6 +46,7 @@
+   gboolean is_fake;
+ 
+   uint32_t id;
++  uint32_t initial_crtc_id;
+ 
+   uint32_t possible_crtcs;
+ 
+@@ -89,6 +90,12 @@
+   g_return_val_if_fail (!plane->is_fake, 0);
+ 
+   return plane->id;
++}
++
++uint32_t
++meta_kms_plane_get_initial_crtc_id (MetaKmsPlane *plane)
++{
++  return plane->initial_crtc_id;
+ }
+ 
+ MetaKmsPlaneType
+@@ -758,6 +765,7 @@
+   plane = g_object_new (META_TYPE_KMS_PLANE, NULL);
+   plane->type = type;
+   plane->id = drm_plane->plane_id;
++  plane->initial_crtc_id = drm_plane->crtc_id;
+   plane->possible_crtcs = drm_plane->possible_crtcs;
+   plane->device = meta_kms_impl_device_get_device (impl_device);
+ 

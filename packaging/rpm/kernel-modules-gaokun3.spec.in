@@ -3,7 +3,7 @@
 
 Name:           @PKG_NAME@
 Version:        @KREL_VERSION@
-Release:        11%{?dist}
+Release:        12%{?dist}
 Summary:        Kernel modules for the gaokun3 kernel
 License:        GPL-2.0-only
 ExclusiveArch:  aarch64
@@ -33,6 +33,10 @@ cp -a usr %{buildroot}/
 /usr/lib/modules/@KREL@
 
 %changelog
+* Sat Oct 10 2026 Gaokun buildbot - @KREL_VERSION@-12
+- Pin Gaokun3 primary planes to their CRTCs for display-owner handoff
+- Retain asynchronous UCSI initialization and disconnect recovery
+
 * Sat Oct 10 2026 Gaokun buildbot - @KREL_VERSION@-11
 - Recover asynchronous Gaokun UCSI initialization without replacing DRM bridges
 - Replay all Type-C port states and process USB/DP events outside the EC IRQ thread

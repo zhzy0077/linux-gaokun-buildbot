@@ -97,6 +97,7 @@ enum { connector_status_connected = 1, connector_status_disconnected = 2 };
 static void *system_wq;
 static struct gaokun_ucsi_reg snapshot;
 static int orientations[2], mux_calls, hpd_calls, last_hpd;
+static int sequence, mux_sequence[2], hpd_sequence[2], port_hpd[2];
 static int read_error, mux_error, ack_mask, ack_error, empty_acks;
 static int core_outcome, registrations, unregistrations, notifier_calls;
 static int dummy_connectors[2];
@@ -106,9 +107,9 @@ static void mutex_unlock(int *m) { assert(*m); *m = 0; }
 static void gaokun_set_orientation(void *con, struct gaokun_ucsi_port *p)
 { (void)con; orientations[p->idx] = p->ccx; }
 static int typec_mux_set(void *mux, struct mux_state *state)
-{ (void)mux; (void)state; ++mux_calls; return mux_error; }
+{ (void)state; mux_sequence[*(int *)mux] = ++sequence; ++mux_calls; return mux_error; }
 static void drm_aux_hpd_bridge_notify(int *dev, int status)
-{ (void)dev; ++hpd_calls; last_hpd = status; }
+{ hpd_sequence[*dev] = ++sequence; port_hpd[*dev] = status; ++hpd_calls; last_hpd = status; }
 static int gaokun_ec_ucsi_get_reg(int ec, struct gaokun_ucsi_reg *reg)
 { (void)ec; *reg = snapshot; return read_error; }
 static int gaokun_ec_ucsi_pan_ack(int ec, int port)
@@ -160,6 +161,7 @@ int main(void)
     struct bridge bridges[2] = {{0}, {1}};
     for (int i = 0; i < 2; ++i) {
         u.ports[i].idx = i; u.ports[i].ucsi = &u; u.ports[i].bridge = &bridges[i];
+        u.ports[i].typec_mux = &bridges[i].dev;
     }
     /* Hardware reproduction: port 0 is DP+HPD; only port 1 has an update. */
     snapshot = (struct gaokun_ucsi_reg){2, 2, {8, 0x13, 4, 0}, 0x79, 0};
@@ -208,6 +210,29 @@ int main(void)
     mux_error = 0;
     sync(&u);
     assert(ack_mask == 1 && u.ports[0].applied_hpd);
+
+    /* Physical port-1 unplug: USB-C partner disappears but the old driver
+     * leaves DRM and the audio jack connected after the SVID becomes zero.
+     * Exercise the other port explicitly, including stale HPD and ACK mask.
+     */
+    snapshot.port_data[2] = 8; snapshot.port_data[3] = 0x13;
+    snapshot.port_updt = 2;
+    sync(&u);
+    assert(u.ports[1].applied_hpd);
+    assert(port_hpd[1] == connector_status_connected);
+    int port0_hpd_sequence = hpd_sequence[0];
+    snapshot.port_data[2] = 0; snapshot.port_data[3] = 0x10;
+    snapshot.port_updt = 1; /* Only the other port needs an ACK. */
+    sync(&u);
+    assert(!u.ports[1].applied_hpd && !u.ports[1].applied_svid);
+    assert(port_hpd[1] == connector_status_disconnected);
+    assert(hpd_sequence[1] < mux_sequence[1]); /* HPD low before lane teardown. */
+    assert(hpd_sequence[0] == port0_hpd_sequence && u.ports[0].applied_hpd);
+    assert(ack_mask == 1);
+    calls = hpd_calls;
+    sync(&u);
+    assert(hpd_calls == calls); /* Replaying the unplug must not flood DRM. */
+
     read_error = -EIO;
     sync(&u);
     assert(ack_mask == 0 && u.sync_work.pending);

@@ -14,6 +14,7 @@ KERN_SRC_BASE="${KERN_SRC_BASE:-$WORKDIR/mainline-linux-base}"
 KERN_SRC_EL2="${KERN_SRC_EL2:-$KERN_SRC}"
 KERN_OUT_EL2="${KERN_OUT_EL2:-}"
 BUILD_EL2="${BUILD_EL2:-false}"
+KERNEL_TEST_SUFFIX="${KERNEL_TEST_SUFFIX:-}"
 
 if [[ "$(uname -m)" == "aarch64" ]]; then
   CROSS_COMPILE="${CROSS_COMPILE:-}"
@@ -67,6 +68,12 @@ git -C "$KERN_SRC" am "$GAOKUN_DIR"/patches/upstream/*.patch
 git -C "$KERN_SRC" am "$GAOKUN_DIR"/patches/others/*.patch
 git -C "$KERN_SRC" am "$GAOKUN_DIR"/patches/media/*.patch
 git -C "$KERN_SRC" am "$GAOKUN_DIR"/patches/0099-arm64-gaokun3-import-local-dts-and-defconfig.patch
+
+set_kernel_test_suffix "$KERN_SRC" "$KERNEL_TEST_SUFFIX"
+if [[ -n "$KERNEL_TEST_SUFFIX" ]]; then
+  git -C "$KERN_SRC" add localversion.gaokun-test
+  git -C "$KERN_SRC" commit -m "Isolate test kernel module namespace: $KERNEL_TEST_SUFFIX"
+fi
 
 ccache -z || true
 build_variant "$KERN_SRC" "$KERN_OUT"

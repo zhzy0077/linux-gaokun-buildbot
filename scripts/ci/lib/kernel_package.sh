@@ -1,6 +1,19 @@
 #!/usr/bin/env bash
 # Shared helpers for the native arm64 kernel build/package jobs.
 
+set_kernel_test_suffix() {
+  local src_dir="$1"
+  local suffix="${2:-}"
+  [[ -n "$suffix" ]] || return 0
+  if [[ ! "$suffix" =~ ^-[a-z0-9][a-z0-9-]{0,23}$ ]]; then
+    echo 'Test suffix must be a hyphen followed by 1-24 lowercase letters, digits or hyphens' >&2
+    return 1
+  fi
+  # Kbuild includes source localversion files before CONFIG_LOCALVERSION.
+  # Keep the audited distro/board Kconfig unchanged, with separate module paths.
+  printf '%s\n' "$suffix" > "$src_dir/localversion.gaokun-test"
+}
+
 report_kernel_disk_usage() {
   printf '\n=== Disk usage: %s ===\n' "$1"
   df -h "$WORKDIR" || true
@@ -25,6 +38,7 @@ stage_kernel_devel() {
     --exclude='/.tmp*'
     --exclude='/vmlinux.unstripped'
     --exclude='/arch/arm64/boot/Image*'
+    --exclude='/arch/arm64/boot/vmlinuz.efi'
     --exclude='*.dtb'
     --exclude='*.dtbo'
   )

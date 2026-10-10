@@ -113,6 +113,18 @@ int main(void) {
                        check=True, capture_output=True)
         subprocess.run([str(binary)], check=True)
 
+    def test_gaokun_primary_plane_pairing(self):
+        from test_dpu_plane_ownership import mask_function
+        source = (self.tree / 'drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c').read_text()
+        self.assertIn(mask_function(), source)
+        objects = re.search(r'static int _dpu_kms_drm_obj_init\(.*?\n}',
+                            source, re.S).group(0)
+        mask = objects.index('dpu_plane_possible_crtcs(type, primary_planes_idx,')
+        increment = objects.index('primary_planes[primary_planes_idx++] = plane;')
+        self.assertLess(mask, increment)
+        self.assertIn('dpu_crtc_init(dev, primary_planes[i], cursor_planes[i])', objects)
+        self.assertIn('encoder->possible_crtcs = (1 << dev->mode_config.num_crtc) - 1;', objects)
+
     def test_complete_standard_and_el2_series(self):
         for name in ('sc8280xp-huawei-gaokun3.dts', 'sc8280xp-huawei-gaokun3-camera.dtsi'):
             self.assertEqual((self.tree / 'arch/arm64/boot/dts/qcom' / name).read_bytes(),

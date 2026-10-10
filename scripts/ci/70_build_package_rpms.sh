@@ -104,6 +104,12 @@ build_variant_rpms() {
 
   install -Dm644 "$out_dir/arch/arm64/boot/Image" \
     "$kernel_stage/boot/vmlinuz-$krel"
+  # Preserve the already-built compressed EFI image for small-ESP test boots.
+  # Normal RPM installation continues to use Image until hardware validation.
+  if [[ -f "$out_dir/arch/arm64/boot/vmlinuz.efi" ]]; then
+    install -m644 "$out_dir/arch/arm64/boot/vmlinuz.efi" "$ARTIFACT_DIR/vmlinuz-$krel.efi"
+    (cd "$ARTIFACT_DIR"; sha256sum "vmlinuz-$krel.efi" > "vmlinuz-$krel.efi.sha256")
+  fi
   install -Dm644 "$out_dir/System.map" \
     "$kernel_stage/boot/System.map-$krel"
   install -Dm644 "$out_dir/.config" \

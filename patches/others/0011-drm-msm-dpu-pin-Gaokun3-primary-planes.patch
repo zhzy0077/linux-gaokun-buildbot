@@ -1,0 +1,87 @@
+From c6acbee6f8b6be90b8a24b8ba4349c92729e52a1 Mon Sep 17 00:00:00 2001
+From: zhzy0077 <zhzy0077@users.noreply.github.com>
+Date: Sun, 11 Oct 2026 00:18:55 +0800
+Subject: [PATCH] drm/msm/dpu: pin Gaokun3 primary planes to their CRTCs
+
+GDM/session transitions on Gaokun3 with an external display can exchange
+the inherited primary-plane assignments. The atomic core rejects the
+live reassignment with "switching CRTC directly", leaving the new
+display owner unable to update either screen.
+
+Expose a single possible CRTC for each primary plane on huawei,gaokun3.
+Use the primary-plane index, matching the subsequent dpu_crtc_init()
+pairing, rather than the SSPP index. Apply the mask to both virtual and
+physical plane creation. Keep other boards, cursor and overlay masks,
+encoder routing, and virtual SSPP allocation unchanged.
+
+This board-specific compatibility restriction keeps the kernel atomic
+safety check intact and avoids requiring a patched compositor. Hardware
+acceptance remains required for the resulting kernel.
+
+Signed-off-by: zhzy0077 <zhzy0077@users.noreply.github.com>
+---
+ drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c | 24 ++++++++++++++++++++++--
+ 1 file changed, 22 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c b/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c
+index da3556e..cb87221 100644
+--- a/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c
++++ b/drivers/gpu/drm/msm/disp/dpu1/dpu_kms.c
+@@ -11,6 +11,7 @@
+ 
+ #include <linux/debugfs.h>
+ #include <linux/dma-buf.h>
++#include <linux/of.h>
+ #include <linux/of_irq.h>
+ #include <linux/pm_opp.h>
+ 
+@@ -799,6 +800,22 @@ static int _dpu_kms_setup_displays(struct drm_device *dev,
+ 	return rc;
+ }
+ 
++static unsigned long dpu_plane_possible_crtcs(enum drm_plane_type type,
++					      unsigned int primary_idx,
++					      unsigned int crtc_count)
++{
++	/*
++	 * Keep primary-plane ownership stable across DRM clients on Gaokun3.
++	 * A new client otherwise can try to exchange two still-active primary
++	 * planes, which the atomic core rejects as a direct CRTC switch.
++	 */
++	if (type == DRM_PLANE_TYPE_PRIMARY &&
++	    of_machine_is_compatible("huawei,gaokun3"))
++		return BIT(primary_idx);
++
++	return (1UL << crtc_count) - 1;
++}
++
+ #define MAX_PLANES 20
+ static int _dpu_kms_drm_obj_init(struct dpu_kms *dpu_kms)
+ {
+@@ -838,6 +855,7 @@ static int _dpu_kms_drm_obj_init(struct dpu_kms *dpu_kms)
+ 	/* Create the planes, keeping track of one primary/cursor per crtc */
+ 	for (i = 0; i < catalog->sspp_count; i++) {
+ 		enum drm_plane_type type;
++		unsigned long possible_crtcs;
+ 
+ 		if ((catalog->sspp[i].features & BIT(DPU_SSPP_CURSOR))
+ 			&& cursor_planes_idx < max_crtc_count)
+@@ -851,11 +869,13 @@ static int _dpu_kms_drm_obj_init(struct dpu_kms *dpu_kms)
+ 			  type, catalog->sspp[i].features,
+ 			  catalog->sspp[i].features & BIT(DPU_SSPP_CURSOR));
+ 
++		possible_crtcs = dpu_plane_possible_crtcs(type, primary_planes_idx,
++							  max_crtc_count);
+ 		if (dpu_use_virtual_planes)
+-			plane = dpu_plane_init_virtual(dev, type, (1UL << max_crtc_count) - 1);
++			plane = dpu_plane_init_virtual(dev, type, possible_crtcs);
+ 		else
+ 			plane = dpu_plane_init(dev, catalog->sspp[i].id, type,
+-					       (1UL << max_crtc_count) - 1);
++					       possible_crtcs);
+ 		if (IS_ERR(plane)) {
+ 			DPU_ERROR("dpu_plane_init failed\n");
+ 			ret = PTR_ERR(plane);
+-- 
+2.56.0
+

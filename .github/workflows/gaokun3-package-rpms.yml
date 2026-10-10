@@ -12,6 +12,11 @@ on:
         required: true
         default: false
         type: boolean
+      test_suffix:
+        description: Optional isolated test suffix, e.g. -dp12 (no install)
+        required: false
+        default: ""
+        type: string
   workflow_call:
     inputs:
       kernel_tag:
@@ -23,6 +28,10 @@ on:
         required: false
         default: false
         type: boolean
+      test_suffix:
+        required: false
+        default: ""
+        type: string
     outputs:
       package_release_tag:
         description: Release tag containing the generated package bundle
@@ -41,6 +50,7 @@ jobs:
       KERNEL_DISTRO: fedora
       KERNEL_TAG: ${{ inputs.kernel_tag || github.event.inputs.kernel_tag }}
       BUILD_EL2: ${{ inputs.build_el2 || github.event.inputs.build_el2 || 'false' }}
+      KERNEL_TEST_SUFFIX: ${{ inputs.test_suffix || '' }}
       GAOKUN_DIR: ${{ github.workspace }}
       WORKDIR: ${{ github.workspace }}/build-packages
       KERN_SRC: ${{ github.workspace }}/build-packages/mainline-linux
@@ -87,6 +97,10 @@ jobs:
           if [[ "$BUILD_EL2" == "true" ]]; then
             profile="std-el2"
           fi
+          if [[ -n "$KERNEL_TEST_SUFFIX" ]]; then
+            [[ "$KERNEL_TEST_SUFFIX" =~ ^-[a-z0-9][a-z0-9-]{0,23}$ ]]
+            profile+="$KERNEL_TEST_SUFFIX"
+          fi
           package_release_tag="gaokun3-rpms-${safe_kernel_tag}-${profile}-$(date -u +%Y%m%d%H%M%S)"
 
           echo "package_release_tag=$package_release_tag" >> "$GITHUB_OUTPUT"
@@ -96,7 +110,7 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.ccache
-          key: gaokun3-packages-rpm-ccache-${{ env.KERNEL_TAG }}-${{ env.BUILD_EL2 }}-${{ hashFiles('patches/*.patch', 'patches/el2/*.patch', 'defconfig/**', 'dts/**', 'drivers/**', 'packaging/**', 'firmware/**', 'scripts/ci/*.sh', '.github/workflows/gaokun3-package-rpms.yml') }}
+          key: gaokun3-packages-rpm-ccache-${{ env.KERNEL_TAG }}-${{ env.BUILD_EL2 }}-${{ hashFiles('patches/**/*.patch', 'defconfig/**', 'dts/**', 'drivers/**', 'packaging/**', 'firmware/**', 'scripts/ci/*.sh', '.github/workflows/gaokun3-package-rpms.yml') }}
           restore-keys: |
             gaokun3-packages-rpm-ccache-${{ env.KERNEL_TAG }}-
             gaokun3-packages-rpm-ccache-
@@ -146,6 +160,8 @@ jobs:
           name: gaokun3-package-rpms
           path: |
             ${{ env.ARTIFACT_DIR }}/*.rpm
+            ${{ env.ARTIFACT_DIR }}/*.efi
+            ${{ env.ARTIFACT_DIR }}/*.efi.sha256
             ${{ env.ARTIFACT_DIR }}/package-manifest.json
             ${{ env.ARTIFACT_DIR }}/kernel-config-*.json
             ${{ env.ARTIFACT_DIR }}/kernel-config-*.config
@@ -157,12 +173,14 @@ jobs:
           tag_name: ${{ steps.release_meta.outputs.package_release_tag }}
           name: gaokun3 package RPMs - ${{ env.KERNEL_TAG }}${{ env.BUILD_EL2 == 'true' && ' + EL2' || '' }}
           body_path: ${{ env.ARTIFACT_DIR }}/package-release-body.md
-          prerelease: false
+          prerelease: ${{ env.KERNEL_TEST_SUFFIX != '' }}
           make_latest: false
           append_body: false
           overwrite_files: true
           files: |
             ${{ env.ARTIFACT_DIR }}/*.rpm
+            ${{ env.ARTIFACT_DIR }}/*.efi
+            ${{ env.ARTIFACT_DIR }}/*.efi.sha256
             ${{ env.ARTIFACT_DIR }}/package-manifest.json
             ${{ env.ARTIFACT_DIR }}/kernel-config-*.json
             ${{ env.ARTIFACT_DIR }}/kernel-config-*.config

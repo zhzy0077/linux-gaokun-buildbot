@@ -39,6 +39,7 @@ def kernel_trees(directory, distro='ubuntu', el2=False):
     put(out / 'gaokun-distro', distro + '\n')
     put(out / 'kernel-config-report.json', '{}\n')
     put(out / 'arch/arm64/boot/Image')
+    put(out / 'arch/arm64/boot/vmlinuz.efi')
     put(out / f'arch/arm64/boot/dts/qcom/sc8280xp-huawei-gaokun3{suffix}.dtb')
     for name in ('scripts/mod/modpost', 'scripts/basic/fixdep',
                  'tools/bpf/resolve_btfids/resolve_btfids'):
@@ -120,6 +121,49 @@ with Path(os.environ['FAKE_PACKAGING_LOG']).open('a') as log:
 '''
 
 
+class KernelTestSuffixTests(unittest.TestCase):
+    def set_suffix(self, source, suffix):
+        return subprocess.run(['bash', '-euo', 'pipefail', '-c',
+                               'source "$1"; set_kernel_test_suffix "$2" "$3"',
+                               'test', str(HELPERS), str(source), suffix],
+                              capture_output=True, text=True)
+
+    def test_opt_in_and_validated_suffix(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory)
+            localversion = source / 'localversion.gaokun-test'
+            self.assertEqual(self.set_suffix(source, '').returncode, 0)
+            self.assertFalse(localversion.exists())
+            for suffix in ('dp12', '-', '--dp12', '-DP12', '-../x', '-a/b',
+                           '-a\nb', '-a b', '-' + 'a' * 25):
+                self.assertNotEqual(self.set_suffix(source, suffix).returncode, 0, suffix)
+                self.assertFalse(localversion.exists())
+            self.assertEqual(self.set_suffix(source, '-dp12').returncode, 0)
+            self.assertEqual(localversion.read_text(), '-dp12\n')
+
+    def test_real_kbuild_release_has_separate_module_namespace(self):
+        kernel = os.environ.get('GAOKUN_KERNEL_SRC')
+        if not kernel or not (Path(kernel) / 'scripts/setlocalversion').is_file():
+            self.skipTest('set GAOKUN_KERNEL_SRC for the real Kbuild release script')
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'source'
+            source.mkdir()
+            output = root / 'output'
+            for localversion in ('-gaokun3', '-gaokun3-el2'):
+                put(output / 'include/config/auto.conf',
+                    'CONFIG_LOCALVERSION=' + localversion + '\n')
+                env = dict(os.environ, KERNELVERSION='7.2.9', LOCALVERSION='')
+                command = ['sh', str(Path(kernel) / 'scripts/setlocalversion'), str(source)]
+                before = subprocess.check_output(command, cwd=output, env=env, text=True).strip()
+                self.assertEqual(before, '7.2.9' + localversion)
+                self.assertEqual(self.set_suffix(source, '-dp12').returncode, 0)
+                after = subprocess.check_output(command, cwd=output, env=env, text=True).strip()
+                self.assertEqual(after, '7.2.9-dp12' + localversion)
+                self.assertNotEqual(before, after)
+                (source / 'localversion.gaokun-test').unlink()
+
+
 @unittest.skipUnless(shutil.which('rsync'), 'rsync required')
 class KernelPackagingTests(unittest.TestCase):
     def stage(self, src, out, dest):
@@ -142,6 +186,7 @@ class KernelPackagingTests(unittest.TestCase):
                 'drivers/test/.driver.o.cmd', 'drivers/test/driver.mod',
                 'drivers/test/driver.mod.c', '.tmp_vmlinux1', 'vmlinux.unstripped',
                 'arch/arm64/boot/Image',
+                'arch/arm64/boot/vmlinuz.efi',
                 'arch/arm64/boot/dts/qcom/sc8280xp-huawei-gaokun3.dtb')
             for name in excluded:
                 with self.subTest(name=name):
@@ -241,6 +286,11 @@ class KernelPackagingTests(unittest.TestCase):
                     description = ROOT / 'packaging/deb/linux-firmware-gaokun3/descriptions/package.in'
                     self.assertIn(description.read_text().strip(), firmware['control'])
                 else:
+                    images = list((work / 'artifacts').glob('vmlinuz-*.efi'))
+                    self.assertEqual(len(images), 2)
+                    for image in images:
+                        subprocess.run(['sha256sum', '-c', image.name + '.sha256'],
+                                       cwd=image.parent, check=True, capture_output=True)
                     for folder in ('SOURCES', 'BUILD', 'BUILDROOT'):
                         self.assertEqual(list((work / 'rpmbuild' / folder).iterdir()), [])
                     self.assertEqual(list((work / 'rpmbuild/RPMS').rglob('*.rpm')), [])

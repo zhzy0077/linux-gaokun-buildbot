@@ -1,0 +1,2 @@
+# Unified diff context and mail trailers contain significant whitespace.
+*.patch -whitespace

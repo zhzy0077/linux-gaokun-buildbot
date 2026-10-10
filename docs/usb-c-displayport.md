@@ -51,6 +51,77 @@ The earlier, unbuilt local driver mirror has been replaced with this
 upstream-based implementation. Merely copying the former mirror into a build
 would not fix its asynchronous-readiness and initial-update-mask assumptions.
 
+## Physical unplug observation on release 10
+
+With the monitor on DRM DP-2, a recorded physical unplug removed
+`port1-partner` from `/sys/class/typec`, while DP-2 remained
+`connected`/`enabled` and `DP1 Jack` remained on. The laptop desktop was
+responsive, but applications remained on the nonexistent external desktop.
+The bounded DRM-audio/jack trace recorded no disconnect notification.
+
+Temporarily forcing the unplugged connector off made Mutter return to a
+single internal display and made `DP1 Jack` report off. This is a per-boot
+recovery, not a successful hotplug acceptance test; automatic detection must
+be restored before the next connected test.
+
+The release-10 source only calls `drm_aux_hpd_bridge_notify()` when the
+**new** SVID is DisplayPort. Leaving DP can therefore skip the disconnect
+notification. The release-11 patch instead derives HPD from both the current
+SVID and HPD level, and drops previously asserted HPD before changing the mux.
+The regression harness explicitly tests port 1 leaving DP with a stale HPD
+bit, only the other port in the update mask, notification before mux teardown,
+and no changes to the still-connected port 0. Hardware validation of this
+patch remains required; the observed test ran the original release-10 driver.
+
+## GDM/session handoff is a separate failure
+
+A later trace on Mutter 50.5 identified the exact login/greeter rejection:
+`drm_atomic_plane_check()` reports **switching CRTC directly** for primary
+planes 43 and 49. The former session can exit normally while the new greeter
+or desktop fails to draw. In a recorded retry, both CRTCs became disabled
+and were then enabled successfully without a physical unplug.
+
+The selected compatibility approach is now the Gaokun3-only DPU patch
+`patches/others/0011-drm-msm-dpu-pin-Gaokun3-primary-planes.patch`. It gives
+primary plane *i* only CRTC *i* in `possible_crtcs`, matching the driver's
+existing `dpu_crtc_init()` pairing. Both virtual and physical plane creation
+use the same restriction. Other boards, cursor/overlay planes, encoder
+routing, CRTC count and virtual SSPP allocation retain their existing behavior.
+DRM's safety check remains intact; the system Mutter package is unchanged.
+
+Native C tests cover 1–8 CRTCs, exact board matching, non-primary masks and
+cross-CRTC exclusion. The full standard/EL2 series applies to pristine Linux
+7.2.9. Hardware acceptance still requires connected startup, GDM/user handoff,
+both USB-C ports, mirror/extended layouts, hotplug and suspend/resume.
+
+The source-only Mutter alternative remains documented in
+[`packaging/mutter/README.md`](../packaging/mutter/README.md) as reference; it
+is not applied by kernel/package workflows.
+
+### Release-12 isolated test build
+
+The RPM workflow accepts `test_suffix=-dp12` to produce separate kernel/module
+namespaces (`7.2.9-dp12-gaokun3+` and `7.2.9-dp12-gaokun3-el2+`, with the SCM
+suffix determined by Kbuild). This uses a source `localversion` file and keeps
+the audited distro/board Kconfig unchanged. Test builds are marked prerelease.
+The kernel, modules and devel RPM Release is 12; the UCSI fix is retained.
+The workflow also uploads Kbuild's already-generated compressed EFI images
+(`vmlinuz-*.efi`) with SHA-256 files for small-ESP evaluation. Normal RPM boot
+installation still uses the uncompressed Image; the EFI alternative needs
+hardware validation before selecting it.
+
+A distinct namespace avoids path collisions with the original release-10
+kernel. Installation must still preserve the original packages and boot files
+and pass ESP capacity checks. Builds/uploads do not install anything. The
+current user's installation/reboot hold remains in force.
+
+DP audio remains an isolated configuration test with a separate DTB sound model
+and additive topology/UCM files. Release-12's normal DTB does not yet include
+those sound links. Before any test boot, generate the audio DTB from the **new
+kernel's** matching DTB, preserving its EL2 reservations, and reuse the verified
+audio firmware overlay. Do not reuse an old complete DTB over a new kernel's
+board changes.
+
 ## Regression checks
 
 ```sh
